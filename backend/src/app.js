@@ -24,6 +24,9 @@ const aiRoutes = require('./routes/ai');
 const blockchainRoutes = require('./routes/blockchain');
 const analyticsRoutes = require('./routes/analytics');
 const deliveryRoutes = require('./routes/delivery');
+const paymentRoutes = require('./routes/payments');
+const sellerRoutes = require('./routes/sellers');
+const notificationRoutes = require('./routes/notifications');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -110,6 +113,9 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/delivery', protect, deliveryRoutes);
+app.use('/api/payments', protect, paymentRoutes);
+app.use('/api/sellers', protect, sellerRoutes);
+app.use('/api/notifications', protect, notificationRoutes);
 
 // API Documentation
 app.get('/api', (req, res) => {
@@ -129,7 +135,10 @@ app.get('/api', (req, res) => {
       ai: '/api/ai',
       blockchain: '/api/blockchain',
       analytics: '/api/analytics',
-      delivery: '/api/delivery'
+      delivery: '/api/delivery',
+      payments: '/api/payments',
+      sellers: '/api/sellers',
+      notifications: '/api/notifications'
     },
     documentation: '/api/docs',
     health: '/health'
@@ -153,7 +162,10 @@ app.use('*', (req, res) => {
       '/api/ai',
       '/api/blockchain',
       '/api/analytics',
-      '/api/delivery'
+      '/api/delivery',
+      '/api/payments',
+      '/api/sellers',
+      '/api/notifications'
     ]
   });
 });
@@ -212,7 +224,7 @@ process.on('SIGTERM', async () => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
 const startServer = async () => {
   try {
     await connectDB();
