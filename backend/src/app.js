@@ -24,14 +24,36 @@ const aiRoutes = require('./routes/ai');
 const blockchainRoutes = require('./routes/blockchain');
 const analyticsRoutes = require('./routes/analytics');
 const deliveryRoutes = require('./routes/delivery');
-const paymentRoutes = require('./routes/payments');
-const sellerRoutes = require('./routes/sellers');
-const notificationRoutes = require('./routes/notifications');
+const sellerRoutes = require('./routes/seller');
+const complaintsRoutes = require('./routes/complaints');
+const adminRoutes = require('./routes/admin');
+const walletRoutes = require('./routes/wallet');
+const franchiseRoutes = require('./routes/franchise');
+const publicRoutes = require('./routes/public');
+const serviceRoutes = require('./routes/services');
+const riderRoutes = require('./routes/riders');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
 const { protect } = require('./middleware/auth');
 const { validateRequest } = require('./middleware/validation');
+
+// Import services
+const complaintEscalationService = require('./services/complaintEscalationService');
+
+// Import models (ensure they are loaded)
+require('./models/User');
+require('./models/Seller');
+require('./models/Product');
+require('./models/Order');
+require('./models/Category');
+require('./models/Service');
+require('./models/Rider');
+require('./models/Delivery');
+require('./models/Complaint');
+require('./models/Wallet');
+require('./models/Transaction');
+require('./models/SQLUpgradeRequest');
 
 // Create Express app
 const app = express();
@@ -113,9 +135,14 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/delivery', protect, deliveryRoutes);
-app.use('/api/payments', protect, paymentRoutes);
-app.use('/api/sellers', protect, sellerRoutes);
-app.use('/api/notifications', protect, notificationRoutes);
+app.use('/api/seller', sellerRoutes);
+app.use('/api/complaints', complaintsRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/franchise', franchiseRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/riders', riderRoutes);
 
 // API Documentation
 app.get('/api', (req, res) => {
@@ -228,6 +255,11 @@ const PORT = process.env.PORT || 5002;
 const startServer = async () => {
   try {
     await connectDB();
+
+    // Initialize complaint escalation service
+    console.log('🕐 Initializing complaint escalation service...');
+    // The service auto-initializes with cron jobs
+    console.log('✅ Complaint escalation service initialized.');
 
     const server = app.listen(PORT, () => {
       console.log('🌟 GoSellr Backend Server Started Successfully!');

@@ -1,50 +1,76 @@
 const mongoose = require('mongoose');
+const slugify = require('slugify');
 
 const categorySchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     trim: true,
-    unique: true
+    maxlength: 100
+  },
+  slug: {
+    type: String,
+    unique: true,
+    lowercase: true
   },
   description: {
     type: String,
-    trim: true,
     maxlength: 500
+  },
+  icon: {
+    type: String,
+    default: '📦'
+  },
+  image: {
+    type: String
   },
   parentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
     default: null
   },
-  image: {
-    type: String,
-    trim: true
+  level: {
+    type: Number,
+    default: 1,
+    min: 1,
+    max: 3
   },
-  isActive: {
-    type: Boolean,
-    default: true
+  order: {
+    type: Number,
+    default: 0
   },
-  slug: {
-    type: String,
-    unique: true,
-    lowercase: true,
-    trim: true
-  },
+  // SEO Fields
   metaTitle: {
     type: String,
-    trim: true,
     maxlength: 60
   },
   metaDescription: {
     type: String,
-    trim: true,
     maxlength: 160
   },
-  sortOrder: {
+  metaKeywords: [{
+    type: String,
+    trim: true
+  }],
+  // Status
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  // Analytics
+  productCount: {
     type: Number,
     default: 0
   },
+  viewCount: {
+    type: Number,
+    default: 0
+  },
+  // Timestamps
   createdAt: {
     type: Date,
     default: Date.now
@@ -54,103 +80,125 @@ const categorySchema = new mongoose.Schema({
     default: Date.now
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
 // Indexes
-categorySchema.index({ name: 1 });
-categorySchema.index({ parentId: 1 });
 categorySchema.index({ slug: 1 });
+categorySchema.index({ parentId: 1 });
+categorySchema.index({ level: 1 });
 categorySchema.index({ isActive: 1 });
-categorySchema.index({ sortOrder: 1 });
+categorySchema.index({ order: 1 });
+categorySchema.index({ name: 'text', description: 'text' });
 
-// Virtual for children categories
-categorySchema.virtual('children', {
-  ref: 'Category',
-  localField: '_id',
-  foreignField: 'parentId'
-});
-
-// Virtual for products in this category
-categorySchema.virtual('products', {
-  ref: 'Product',
-  localField: '_id',
-  foreignField: 'categoryId'
-});
-
-// Pre-save middleware to generate slug
+// Pre-save middleware
 categorySchema.pre('save', function(next) {
-  if (this.isModified('name')) {
-    this.slug = this.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+  // Generate slug if not provided
+  if (!this.slug) {
+    this.slug = slugify(this.name, { lower: true, strict: true });
   }
 
   this.updatedAt = new Date();
   next();
 });
 
-// Static method to get category tree
-categorySchema.statics.getTree = function() {
-  return this.find({ isActive: true })
-    .populate('children')
-    .sort({ sortOrder: 1, name: 1 });
+// Virtual for subcategories
+categorySchema.virtual('subcategories', {
+  ref: 'Category',
+  localField: '_id',
+  foreignField: 'parentId'
+});
+
+// Virtual for full path
+categorySchema.virtual('fullPath').get(function() {
+  return this.parentId ? `${this.parentId.name} > ${this.name}` : this.name;
+});
+
+// Instance methods
+categorySchema.methods.incrementProductCount = function() {
+  this.productCount += 1;
+  return this.save();
 };
 
-// Static method to get breadcrumb
-categorySchema.statics.getBreadcrumb = async function(categoryId) {
-  const breadcrumb = [];
-  let currentCategory = await this.findById(categoryId);
+categorySchema.methods.decrementProductCount = function() {
+  if (this.productCount > 0) {
+    this.productCount -= 1;
+  }
+  return this.save();
+};
 
-  while (currentCategory) {
-    breadcrumb.unshift({
-      id: currentCategory._id,
-      name: currentCategory.name,
-      slug: currentCategory.slug
+categorySchema.methods.incrementViewCount = function() {
+  this.viewCount += 1;
+  return this.save();
+};
+
+// Static methods
+categorySchema.statics.findBySlug = function(slug) {
+  return this.findOne({ slug, isActive: true });
+};
+
+categorySchema.statics.findMainCategories = function() {
+  return this.find({
+    parentId: null,
+    isActive: true
+  }).sort({ order: 1, name: 1 });
+};
+
+categorySchema.statics.findSubcategories = function(parentId) {
+  return this.find({
+    parentId,
+    isActive: true
+  }).sort({ order: 1, name: 1 });
+};
+
+categorySchema.statics.findFeatured = function() {
+  return this.find({
+    isFeatured: true,
+    isActive: true
+  }).sort({ order: 1, name: 1 });
+};
+
+categorySchema.statics.getCategoryTree = function() {
+  return this.aggregate([
+    { $match: { isActive: true } },
+    {
+      $lookup: {
+        from: 'categories',
+        localField: '_id',
+        foreignField: 'parentId',
+        as: 'subcategories'
+      }
+    },
+    {
+      $addFields: {
+        subcategories: {
+          $filter: {
+            input: '$subcategories',
+            as: 'sub',
+            cond: { $eq: ['$$sub.isActive', true] }
+          }
+        }
+      }
+    },
+    { $sort: { order: 1, name: 1 } }
+  ]);
+};
+
+categorySchema.statics.updateProductCounts = async function() {
+  const Product = mongoose.model('Product');
+
+  const categories = await this.find({ isActive: true });
+
+  for (const category of categories) {
+    const count = await Product.countDocuments({
+      category: category.name,
+      isActive: true,
+      status: 'approved'
     });
 
-    if (currentCategory.parentId) {
-      currentCategory = await this.findById(currentCategory.parentId);
-    } else {
-      break;
-    }
+    category.productCount = count;
+    await category.save();
   }
-
-  return breadcrumb;
-};
-
-// Instance method to get all children recursively
-categorySchema.methods.getAllChildren = async function() {
-  const children = await this.constructor.find({ parentId: this._id });
-  let allChildren = [...children];
-
-  for (const child of children) {
-    const grandChildren = await child.getAllChildren();
-    allChildren = allChildren.concat(grandChildren);
-  }
-
-  return allChildren;
-};
-
-// Instance method to get all parents recursively
-categorySchema.methods.getAllParents = async function() {
-  const parents = [];
-  let currentCategory = this;
-
-  while (currentCategory.parentId) {
-    const parent = await this.constructor.findById(currentCategory.parentId);
-    if (parent) {
-      parents.unshift(parent);
-      currentCategory = parent;
-    } else {
-      break;
-    }
-  }
-
-  return parents;
 };
 
 module.exports = mongoose.model('Category', categorySchema);

@@ -1,462 +1,359 @@
 const express = require('express');
-const Complaint = require('../models/Complaint');
-const Order = require('../models/Order');
-const { ApiResponse } = require('../utils/ApiResponse');
-const { ApiError } = require('../utils/ApiError');
+const { body, validationResult } = require('express-validator');
 const { catchAsync } = require('../utils/catchAsync');
+const { ApiError } = require('../utils/ApiError');
+const { ApiResponse } = require('../utils/ApiResponse');
 
 const router = express.Router();
 
-// Create Complaint
-router.post('/', catchAsync(async (req, res) => {
+// ========================================
+// COMPLAINT MANAGEMENT
+// ========================================
+
+// Create complaint
+router.post('/', [
+  body('type').isIn(['order', 'product', 'seller', 'delivery', 'payment', 'technical', 'other']).withMessage('Valid complaint type is required'),
+  body('subject').trim().notEmpty().withMessage('Subject is required'),
+  body('description').trim().notEmpty().withMessage('Description is required'),
+  body('priority').optional().isIn(['low', 'medium', 'high', 'urgent']).withMessage('Valid priority is required'),
+  body('orderId').optional().isMongoId().withMessage('Valid order ID is required'),
+  body('productId').optional().isMongoId().withMessage('Valid product ID is required'),
+  body('sellerId').optional().isMongoId().withMessage('Valid seller ID is required')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
   const {
-    orderId,
-    complaintType,
+    type,
+    subject,
     description,
     priority = 'medium',
-    attachments = []
+    orderId,
+    productId,
+    sellerId,
+    attachments
   } = req.body;
-
-  // Validate order exists
-  const order = await Order.findById(orderId);
-  if (!order) {
-    throw new ApiError(404, 'Order not found');
-  }
-
-  // Check if complaint already exists for this order
-  const existingComplaint = await Complaint.findOne({ orderId });
-  if (existingComplaint) {
-    throw new ApiError(400, 'Complaint already exists for this order');
-  }
 
   // Create complaint
-  const complaint = new Complaint({
-    orderId,
-    buyerId: order.userId,
-    sellerId: order.sellerId,
-    franchiseId: order.franchiseId || 'default_franchise', // Should come from order
-    franchiseLevel: 'sub', // Default to sub-franchise
-    complaintType,
+  const complaint = {
+    id: `complaint_${Date.now()}`,
+    userId: req.user?.userId || 'anonymous',
+    type,
+    subject,
     description,
     priority,
-    attachments,
-    timeLogs: {
-      orderPlacedAt: order.createdAt,
-      subNotifiedAt: new Date()
-    }
-  });
-
-  await complaint.save();
-
-  res.status(201).json(new ApiResponse(201, {
-    complaint: {
-      id: complaint._id,
-      orderId: complaint.orderId,
-      complaintType: complaint.complaintType,
-      status: complaint.status,
-      priority: complaint.priority,
-      createdAt: complaint.createdAt
-    }
-  }, 'Complaint created successfully'));
-}));
-
-// Get All Complaints (with filters)
-router.get('/', catchAsync(async (req, res) => {
-  const {
-    page = 1,
-    limit = 10,
-    status,
-    priority,
-    complaintType,
-    franchiseId,
-    escalated
-  } = req.query;
-
-  const query = { isActive: true };
-  if (status) query.status = status;
-  if (priority) query.priority = priority;
-  if (complaintType) query.complaintType = complaintType;
-  if (franchiseId) query.franchiseId = franchiseId;
-  if (escalated !== undefined) query.escalated = escalated === 'true';
-
-  const complaints = await Complaint.find(query)
-    .populate('orderId', 'orderNumber totalAmount')
-    .populate('buyerId', 'name email')
-    .populate('sellerId', 'name shopName')
-    .populate('franchiseId', 'name level')
-    .limit(limit * 1)
-    .skip((page - 1) * limit)
-    .sort({ createdAt: -1 });
-
-  const total = await Complaint.countDocuments(query);
-
-  res.json(new ApiResponse(200, {
-    complaints,
-    pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total,
-      pages: Math.ceil(total / limit)
-    }
-  }, 'Complaints retrieved'));
-}));
-
-// Get Complaint by ID
-router.get('/:id', catchAsync(async (req, res) => {
-  const complaint = await Complaint.findById(req.params.id)
-    .populate('orderId', 'orderNumber totalAmount items')
-    .populate('buyerId', 'name email contact')
-    .populate('sellerId', 'name shopName contact')
-    .populate('franchiseId', 'name level contact')
-    .populate('assignedTo', 'name email');
-
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  res.json(new ApiResponse(200, { complaint }, 'Complaint retrieved'));
-}));
-
-// Update Complaint Status
-router.patch('/:id/status', catchAsync(async (req, res) => {
-  const { status, notes } = req.body;
-
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  complaint.status = status;
-
-  if (status === 'resolved') {
-    complaint.timeLogs.resolvedAt = new Date();
-  }
-
-  // Add communication note
-  if (notes) {
-    complaint.communications.push({
-      type: 'note',
-      from: req.user?.name || 'System',
-      to: 'system',
-      message: `Status changed to ${status}. Notes: ${notes}`,
-      isInternal: true
-    });
-  }
-
-  await complaint.save();
-
-  res.json(new ApiResponse(200, { complaint }, 'Complaint status updated'));
-}));
-
-// Assign Complaint
-router.patch('/:id/assign', catchAsync(async (req, res) => {
-  const { assignedTo } = req.body;
-
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  await complaint.assign(assignedTo);
-
-  res.json(new ApiResponse(200, { complaint }, 'Complaint assigned successfully'));
-}));
-
-// Escalate Complaint
-router.patch('/:id/escalate', catchAsync(async (req, res) => {
-  const { level, reason, notes } = req.body;
-
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  await complaint.escalate(level, req.user?.name || 'System', reason);
-
-  res.json(new ApiResponse(200, { complaint }, 'Complaint escalated successfully'));
-}));
-
-// Resolve Complaint
-router.patch('/:id/resolve', catchAsync(async (req, res) => {
-  const {
-    resolutionType,
-    resolutionNotes,
-    customerSatisfaction
-  } = req.body;
-
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  await complaint.resolve(
-    req.user?.id || 'system',
-    resolutionType,
-    resolutionNotes
-  );
-
-  if (customerSatisfaction) {
-    complaint.resolution.customerSatisfaction = customerSatisfaction;
-    await complaint.save();
-  }
-
-  res.json(new ApiResponse(200, { complaint }, 'Complaint resolved successfully'));
-}));
-
-// Add Communication to Complaint
-router.post('/:id/communication', catchAsync(async (req, res) => {
-  const { type, to, message, isInternal = false } = req.body;
-
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  await complaint.addCommunication(
-    type,
-    req.user?.name || 'System',
-    to,
-    message,
-    isInternal
-  );
-
-  res.json(new ApiResponse(200, { complaint }, 'Communication added successfully'));
-}));
-
-// Calculate Fine for Complaint
-router.post('/:id/calculate-fine', catchAsync(async (req, res) => {
-  const { orderAmount } = req.body;
-
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  await complaint.calculateFine(orderAmount);
-
-  res.json(new ApiResponse(200, {
-    fineAmount: complaint.fineAmount,
-    finePercentage: complaint.finePercentage
-  }, 'Fine calculated successfully'));
-}));
-
-// Get Complaint Analytics
-router.get('/analytics/summary', catchAsync(async (req, res) => {
-  const { franchiseId, startDate, endDate } = req.query;
-
-  const query = { isActive: true };
-  if (franchiseId) query.franchiseId = franchiseId;
-  if (startDate && endDate) {
-    query.createdAt = {
-      $gte: new Date(startDate),
-      $lte: new Date(endDate)
-    };
-  }
-
-  // Get complaint statistics
-  const stats = await Complaint.aggregate([
-    { $match: query },
-    {
-      $group: {
-        _id: null,
-        total: { $sum: 1 },
-        pending: {
-          $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
-        },
-        inProgress: {
-          $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
-        },
-        resolved: {
-          $sum: { $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0] }
-        },
-        escalated: {
-          $sum: { $cond: [{ $eq: ['$escalated', true] }, 1, 0] }
-        },
-        totalFines: { $sum: '$fineAmount' },
-        avgResolutionTime: { $avg: '$analytics.timeToResolution' }
-      }
-    }
-  ]);
-
-  // Get complaints by type
-  const byType = await Complaint.aggregate([
-    { $match: query },
-    {
-      $group: {
-        _id: '$complaintType',
-        count: { $sum: 1 }
-      }
-    }
-  ]);
-
-  // Get complaints by priority
-  const byPriority = await Complaint.aggregate([
-    { $match: query },
-    {
-      $group: {
-        _id: '$priority',
-        count: { $sum: 1 }
-      }
-    }
-  ]);
-
-  const analytics = {
-    summary: stats[0] || {
-      total: 0,
-      pending: 0,
-      inProgress: 0,
-      resolved: 0,
-      escalated: 0,
-      totalFines: 0,
-      avgResolutionTime: 0
-    },
-    byType,
-    byPriority
+    orderId,
+    productId,
+    sellerId,
+    attachments: attachments || [],
+    status: 'open',
+    createdAt: new Date()
   };
 
-  res.json(new ApiResponse(200, { analytics }, 'Analytics retrieved'));
+  res.status(201).json(new ApiResponse(201, 'Complaint created successfully', {
+    complaint
+  }));
 }));
 
-// Get Pending Complaints (for dashboard)
-router.get('/dashboard/pending', catchAsync(async (req, res) => {
-  const { franchiseId } = req.query;
+// Get user complaints
+router.get('/user/:userId', catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  const { page = 1, limit = 20, status, type } = req.query;
 
-  const query = { status: 'pending', isActive: true };
-  if (franchiseId) query.franchiseId = franchiseId;
-
-  const complaints = await Complaint.find(query)
-    .populate('orderId', 'orderNumber totalAmount')
-    .populate('buyerId', 'name email')
-    .populate('sellerId', 'name shopName')
-    .populate('franchiseId', 'name level')
-    .sort({ createdAt: -1 })
-    .limit(10);
-
-  res.json(new ApiResponse(200, { complaints }, 'Pending complaints retrieved'));
-}));
-
-// Get Escalated Complaints (for dashboard)
-router.get('/dashboard/escalated', catchAsync(async (req, res) => {
-  const { franchiseId } = req.query;
-
-  const query = { escalated: true, isActive: true };
-  if (franchiseId) query.franchiseId = franchiseId;
-
-  const complaints = await Complaint.find(query)
-    .populate('orderId', 'orderNumber totalAmount')
-    .populate('buyerId', 'name email')
-    .populate('sellerId', 'name shopName')
-    .populate('franchiseId', 'name level')
-    .sort({ createdAt: -1 })
-    .limit(10);
-
-  res.json(new ApiResponse(200, { complaints }, 'Escalated complaints retrieved'));
-}));
-
-// Auto-escalation check (cron job endpoint)
-router.post('/check-escalation', catchAsync(async (req, res) => {
-  const now = new Date();
-  const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-  const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-
-  // Find complaints that need escalation
-  const complaintsToEscalate = await Complaint.find({
-    status: { $in: ['pending', 'in_progress'] },
-    escalated: false,
-    isActive: true,
-    createdAt: { $lt: sixHoursAgo }
-  });
-
-  const escalatedComplaints = [];
-
-  for (const complaint of complaintsToEscalate) {
-    const hoursSinceCreation = Math.round((now - complaint.createdAt) / (1000 * 60 * 60));
-
-    if (hoursSinceCreation >= 12) {
-      // Escalate to corporate
-      await complaint.escalate('corporate', 'System', 'Auto-escalation after 12 hours');
-      escalatedComplaints.push({ id: complaint._id, level: 'corporate' });
-    } else if (hoursSinceCreation >= 6) {
-      // Escalate to master
-      await complaint.escalate('master_franchise', 'System', 'Auto-escalation after 6 hours');
-      escalatedComplaints.push({ id: complaint._id, level: 'master_franchise' });
-    }
-  }
-
-  res.json(new ApiResponse(200, {
-    escalatedCount: escalatedComplaints.length,
-    escalatedComplaints
-  }, 'Escalation check completed'));
-}));
-
-// Get Complaint Timeline
-router.get('/:id/timeline', catchAsync(async (req, res) => {
-  const complaint = await Complaint.findById(req.params.id)
-    .populate('orderId', 'orderNumber totalAmount')
-    .populate('buyerId', 'name email')
-    .populate('sellerId', 'name shopName')
-    .populate('franchiseId', 'name level');
-
-  if (!complaint) {
-    throw new ApiError(404, 'Complaint not found');
-  }
-
-  const timeline = [
+  // Mock complaints (in real app, these would come from a complaints collection)
+  const complaints = [
     {
-      event: 'Order Placed',
-      timestamp: complaint.timeLogs.orderPlacedAt,
-      description: `Order #${complaint.orderId?.orderNumber} was placed`
+      id: 'complaint_1',
+      userId: userId,
+      type: 'order',
+      subject: 'Order not delivered',
+      description: 'My order was supposed to be delivered yesterday but it hasn\'t arrived yet.',
+      priority: 'high',
+      status: 'open',
+      createdAt: new Date()
     },
     {
-      event: 'Complaint Created',
-      timestamp: complaint.createdAt,
-      description: `Complaint filed for ${complaint.complaintType}`
-    },
-    {
-      event: 'Sub-Franchise Notified',
-      timestamp: complaint.timeLogs.subNotifiedAt,
-      description: 'Complaint assigned to sub-franchise'
+      id: 'complaint_2',
+      userId: userId,
+      type: 'product',
+      subject: 'Product quality issue',
+      description: 'The product I received is not as described in the listing.',
+      priority: 'medium',
+      status: 'resolved',
+      createdAt: new Date(Date.now() - 86400000)
     }
   ];
 
-  if (complaint.timeLogs.masterEscalatedAt) {
-    timeline.push({
-      event: 'Escalated to Master',
-      timestamp: complaint.timeLogs.masterEscalatedAt,
-      description: 'Complaint escalated to master franchise'
-    });
+  // Filter complaints
+  let filteredComplaints = complaints;
+  if (status) {
+    filteredComplaints = filteredComplaints.filter(c => c.status === status);
+  }
+  if (type) {
+    filteredComplaints = filteredComplaints.filter(c => c.type === type);
   }
 
-  if (complaint.timeLogs.corporateEscalatedAt) {
-    timeline.push({
-      event: 'Escalated to Corporate',
-      timestamp: complaint.timeLogs.corporateEscalatedAt,
-      description: 'Complaint escalated to corporate'
-    });
+  // Pagination
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + parseInt(limit);
+  const paginatedComplaints = filteredComplaints.slice(startIndex, endIndex);
+
+  res.json(new ApiResponse(200, 'User complaints retrieved successfully', {
+    complaints: paginatedComplaints,
+    pagination: {
+      current: parseInt(page),
+      pages: Math.ceil(filteredComplaints.length / limit),
+      total: filteredComplaints.length
+    }
+  }));
+}));
+
+// Get complaint by ID
+router.get('/:id', catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  // Mock complaint (in real app, fetch from database)
+  const complaint = {
+    id: id,
+    userId: 'user_123',
+    type: 'order',
+    subject: 'Order not delivered',
+    description: 'My order was supposed to be delivered yesterday but it hasn\'t arrived yet.',
+    priority: 'high',
+    status: 'open',
+    createdAt: new Date(),
+    updates: [
+      {
+        id: 'update_1',
+        message: 'Complaint received and being reviewed',
+        status: 'open',
+        createdAt: new Date()
+      }
+    ]
+  };
+
+  res.json(new ApiResponse(200, 'Complaint retrieved successfully', {
+    complaint
+  }));
+}));
+
+// Update complaint
+router.put('/:id', [
+  body('status').optional().isIn(['open', 'in_progress', 'resolved', 'closed']).withMessage('Valid status is required'),
+  body('message').optional().isString().withMessage('Message is required')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
   }
 
-  if (complaint.timeLogs.resolvedAt) {
-    timeline.push({
-      event: 'Resolved',
-      timestamp: complaint.timeLogs.resolvedAt,
-      description: `Complaint resolved with ${complaint.resolution.resolutionType}`
-    });
+  const { id } = req.params;
+  const { status, message } = req.body;
+
+  // Mock update (in real app, update in database)
+  const complaint = {
+    id: id,
+    status: status || 'open',
+    updatedAt: new Date(),
+    message: message
+  };
+
+  res.json(new ApiResponse(200, 'Complaint updated successfully', {
+    complaint
+  }));
+}));
+
+// Add update to complaint
+router.post('/:id/updates', [
+  body('message').trim().notEmpty().withMessage('Message is required'),
+  body('status').optional().isIn(['open', 'in_progress', 'resolved', 'closed']).withMessage('Valid status is required')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
   }
 
-  // Add communications to timeline
-  complaint.communications.forEach(comm => {
-    timeline.push({
-      event: 'Communication',
-      timestamp: comm.timestamp,
-      description: `${comm.type} from ${comm.from} to ${comm.to}: ${comm.message}`,
-      isInternal: comm.isInternal
-    });
-  });
+  const { id } = req.params;
+  const { message, status } = req.body;
 
-  // Sort timeline by timestamp
-  timeline.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  // Mock update (in real app, add to database)
+  const update = {
+    id: `update_${Date.now()}`,
+    complaintId: id,
+    message,
+    status: status || 'open',
+    createdAt: new Date()
+  };
 
-  res.json(new ApiResponse(200, { timeline }, 'Complaint timeline retrieved'));
+  res.json(new ApiResponse(200, 'Complaint update added successfully', {
+    update
+  }));
+}));
+
+// ========================================
+// ADMIN COMPLAINT MANAGEMENT
+// ========================================
+
+// Get all complaints (admin)
+router.get('/', catchAsync(async (req, res) => {
+  const { page = 1, limit = 20, status, type, priority } = req.query;
+
+  // Mock complaints (in real app, fetch from database)
+  const complaints = [
+    {
+      id: 'complaint_1',
+      userId: 'user_123',
+      type: 'order',
+      subject: 'Order not delivered',
+      description: 'My order was supposed to be delivered yesterday but it hasn\'t arrived yet.',
+      priority: 'high',
+      status: 'open',
+      createdAt: new Date()
+    },
+    {
+      id: 'complaint_2',
+      userId: 'user_456',
+      type: 'product',
+      subject: 'Product quality issue',
+      description: 'The product I received is not as described in the listing.',
+      priority: 'medium',
+      status: 'resolved',
+      createdAt: new Date(Date.now() - 86400000)
+    }
+  ];
+
+  // Filter complaints
+  let filteredComplaints = complaints;
+  if (status) {
+    filteredComplaints = filteredComplaints.filter(c => c.status === status);
+  }
+  if (type) {
+    filteredComplaints = filteredComplaints.filter(c => c.type === type);
+  }
+  if (priority) {
+    filteredComplaints = filteredComplaints.filter(c => c.priority === priority);
+  }
+
+  // Pagination
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + parseInt(limit);
+  const paginatedComplaints = filteredComplaints.slice(startIndex, endIndex);
+
+  res.json(new ApiResponse(200, 'Complaints retrieved successfully', {
+    complaints: paginatedComplaints,
+    pagination: {
+      current: parseInt(page),
+      pages: Math.ceil(filteredComplaints.length / limit),
+      total: filteredComplaints.length
+    }
+  }));
+}));
+
+// Get complaint statistics (admin)
+router.get('/stats', catchAsync(async (req, res) => {
+  const { period = '30d' } = req.query;
+
+  // Calculate date range
+  const now = new Date();
+  let startDate;
+
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  // Mock statistics (in real app, calculate from database)
+  const stats = {
+    period,
+    totalComplaints: 150,
+    openComplaints: 45,
+    resolvedComplaints: 95,
+    closedComplaints: 10,
+    averageResolutionTime: '2.5 days',
+    complaintsByType: {
+      order: 60,
+      product: 40,
+      seller: 20,
+      delivery: 15,
+      payment: 10,
+      technical: 3,
+      other: 2
+    },
+    complaintsByPriority: {
+      low: 30,
+      medium: 80,
+      high: 35,
+      urgent: 5
+    }
+  };
+
+  res.json(new ApiResponse(200, 'Complaint statistics retrieved successfully', {
+    stats
+  }));
+}));
+
+// ========================================
+// COMPLAINT ESCALATION
+// ========================================
+
+// Escalate complaint
+router.post('/:id/escalate', [
+  body('reason').trim().notEmpty().withMessage('Escalation reason is required'),
+  body('level').isIn(['level1', 'level2', 'level3', 'management']).withMessage('Valid escalation level is required')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { id } = req.params;
+  const { reason, level } = req.body;
+
+  // Mock escalation (in real app, update in database)
+  const escalation = {
+    id: `escalation_${Date.now()}`,
+    complaintId: id,
+    reason,
+    level,
+    escalatedAt: new Date(),
+    status: 'pending'
+  };
+
+  res.json(new ApiResponse(200, 'Complaint escalated successfully', {
+    escalation
+  }));
+}));
+
+// Get escalation history
+router.get('/:id/escalations', catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  // Mock escalations (in real app, fetch from database)
+  const escalations = [
+    {
+      id: 'escalation_1',
+      complaintId: id,
+      reason: 'Customer not satisfied with initial response',
+      level: 'level2',
+      escalatedAt: new Date(),
+      status: 'resolved'
+    }
+  ];
+
+  res.json(new ApiResponse(200, 'Escalation history retrieved successfully', {
+    escalations
+  }));
 }));
 
 module.exports = router;

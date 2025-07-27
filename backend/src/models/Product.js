@@ -1,20 +1,17 @@
 const mongoose = require('mongoose');
-
-// Simple slug generation function
-const generateSlug = (text) => {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-};
+const slugify = require('slugify');
 
 const productSchema = new mongoose.Schema({
-  // Basic Information
-  name: {
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Seller',
+    required: true
+  },
+  title: {
     type: String,
-    required: [true, 'Product name is required'],
+    required: true,
     trim: true,
-    maxlength: [200, 'Product name cannot exceed 200 characters']
+    maxlength: 200
   },
   slug: {
     type: String,
@@ -23,136 +20,115 @@ const productSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: [true, 'Product description is required'],
-    maxlength: [2000, 'Description cannot exceed 2000 characters']
+    required: true,
+    maxlength: 2000
   },
   shortDescription: {
     type: String,
-    maxlength: [500, 'Short description cannot exceed 500 characters']
+    maxlength: 200
   },
-
-  // Pricing
-  price: {
-    type: Number,
-    required: [true, 'Product price is required'],
-    min: [0, 'Price cannot be negative']
-  },
-  originalPrice: {
-    type: Number,
-    min: [0, 'Original price cannot be negative']
-  },
-  discountPercentage: {
-    type: Number,
-    min: [0, 'Discount percentage cannot be negative'],
-    max: [100, 'Discount percentage cannot exceed 100%']
-  },
-  currency: {
-    type: String,
-    default: 'USD',
-    enum: ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD']
-  },
-
-  // Images
-  images: [{
-    url: {
-      type: String,
-      required: true
-    },
-    alt: String,
-    isPrimary: {
-      type: Boolean,
-      default: false
-    }
-  }],
-  thumbnail: {
-    type: String,
-    required: true
-  },
-
-  // Category and Brand
   category: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
-    required: [true, 'Product category is required']
+    type: String,
+    required: true,
+    enum: ['Grocery', 'Electronics', 'Fashion', 'Home', 'Beauty', 'Sports', 'Books', 'Automotive', 'Health', 'Other']
   },
   subcategory: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category'
-  },
-  brand: {
     type: String,
     trim: true
   },
-
-  // Inventory
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  originalPrice: {
+    type: Number,
+    min: 0
+  },
+  discountPercentage: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  images: [{
+    type: String,
+    required: true
+  }],
   stock: {
     type: Number,
-    required: [true, 'Stock quantity is required'],
-    min: [0, 'Stock cannot be negative'],
+    required: true,
+    min: 0,
     default: 0
   },
   sku: {
     type: String,
     unique: true,
-    trim: true
+    sparse: true
   },
-  barcode: {
+  tags: [{
     type: String,
     trim: true
-  },
-
-  // Specifications
-  specifications: [{
-    name: {
-      type: String,
-      required: true
-    },
-    value: {
-      type: String,
-      required: true
-    }
   }],
-
-  // Dimensions and Weight
+  specifications: [{
+    name: String,
+    value: String
+  }],
+  weight: {
+    type: Number,
+    min: 0
+  },
   dimensions: {
     length: Number,
     width: Number,
-    height: Number,
-    unit: {
-      type: String,
-      enum: ['cm', 'inch'],
-      default: 'cm'
-    }
+    height: Number
   },
-  weight: {
-    value: Number,
-    unit: {
-      type: String,
-      enum: ['kg', 'g', 'lb', 'oz'],
-      default: 'kg'
-    }
+  brand: {
+    type: String,
+    trim: true
   },
-
-  // Shipping
-  shipping: {
-    weight: Number,
-    dimensions: {
-      length: Number,
-      width: Number,
-      height: Number
-    },
-    freeShipping: {
-      type: Boolean,
-      default: false
-    },
-    shippingCost: {
-      type: Number,
-      default: 0
-    }
+  model: {
+    type: String,
+    trim: true
   },
-
-  // Ratings and Reviews
-  ratings: {
+  warranty: {
+    type: String,
+    trim: true
+  },
+  // SQL Level Features
+  SQL_level: {
+    type: String,
+    enum: ['Free', 'Basic', 'Normal', 'High', 'VIP'],
+    default: 'Free'
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'draft'],
+    default: 'pending'
+  },
+  // SEO Fields
+  metaTitle: {
+    type: String,
+    maxlength: 60
+  },
+  metaDescription: {
+    type: String,
+    maxlength: 160
+  },
+  metaKeywords: [{
+    type: String,
+    trim: true
+  }],
+  // Analytics
+  views: {
+    type: Number,
+    default: 0
+  },
+  sales: {
+    type: Number,
+    default: 0
+  },
+  rating: {
     average: {
       type: Number,
       default: 0,
@@ -162,120 +138,41 @@ const productSchema = new mongoose.Schema({
     count: {
       type: Number,
       default: 0
-    },
-    distribution: {
-      1: { type: Number, default: 0 },
-      2: { type: Number, default: 0 },
-      3: { type: Number, default: 0 },
-      4: { type: Number, default: 0 },
-      5: { type: Number, default: 0 }
     }
   },
-
-  // SEO and Marketing
-  metaTitle: {
-    type: String,
-    maxlength: [60, 'Meta title cannot exceed 60 characters']
-  },
-  metaDescription: {
-    type: String,
-    maxlength: [160, 'Meta description cannot exceed 160 characters']
-  },
-  keywords: [String],
-  tags: [String],
-
-  // Status and Visibility
-  status: {
-    type: String,
-    enum: ['active', 'inactive', 'draft', 'archived'],
-    default: 'active'
-  },
-  featured: {
-    type: Boolean,
-    default: false
-  },
-  trending: {
-    type: Boolean,
-    default: false
-  },
-  bestSeller: {
-    type: Boolean,
-    default: false
-  },
-  newArrival: {
-    type: Boolean,
-    default: false
-  },
-
-  // AI and Analytics
-  aiRecommendations: [{
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product'
-    },
-    score: Number,
-    reason: String
-  }],
-  viewCount: {
-    type: Number,
-    default: 0
-  },
-  purchaseCount: {
-    type: Number,
-    default: 0
-  },
-  wishlistCount: {
-    type: Number,
-    default: 0
-  },
-
-  // Blockchain Integration
-  blockchain: {
-    tokenized: {
+  // Express Delivery
+  expressDelivery: {
+    available: {
       type: Boolean,
       default: false
     },
-    nftContract: String,
-    tokenId: String,
-    blockchain: {
+    estimatedTime: {
       type: String,
-      enum: ['ethereum', 'polygon', 'binance', 'solana'],
-      default: 'ethereum'
+      default: '24-48 hours'
+    },
+    additionalCost: {
+      type: Number,
+      default: 0
     }
   },
-
-  // Multi-platform Integration
-  platformData: {
-    amazon: {
-      asin: String,
-      price: Number,
-      rating: Number,
-      reviewCount: Number
-    },
-    shopify: {
-      productId: String,
-      price: Number,
-      inventory: Number
-    },
-    ebay: {
-      itemId: String,
-      price: Number,
-      condition: String
-    }
+  // Location & Coverage
+  availableLocations: [{
+    type: String,
+    trim: true
+  }],
+  // Status
+  isActive: {
+    type: Boolean,
+    default: true
   },
-
-  // Seller Information
-  seller: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  isFeatured: {
+    type: Boolean,
+    default: false
   },
-  vendor: {
-    name: String,
-    id: String,
-    rating: Number
+  isTrending: {
+    type: Boolean,
+    default: false
   },
-
   // Timestamps
   createdAt: {
     type: Date,
@@ -284,160 +181,146 @@ const productSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  },
-  publishedAt: Date,
-
-  // Soft Delete
-  deletedAt: Date,
-  isDeleted: {
-    type: Boolean,
-    default: false
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
-// Indexes for better performance
-productSchema.index({ name: 'text', description: 'text', tags: 'text' });
-productSchema.index({ category: 1, status: 1 });
-productSchema.index({ price: 1 });
-productSchema.index({ ratings: 1 });
-productSchema.index({ featured: 1, status: 1 });
-productSchema.index({ trending: 1, status: 1 });
-productSchema.index({ bestSeller: 1, status: 1 });
-productSchema.index({ newArrival: 1, status: 1 });
+// Indexes
 productSchema.index({ slug: 1 });
-productSchema.index({ sku: 1 });
-productSchema.index({ seller: 1, status: 1 });
+productSchema.index({ sellerId: 1 });
+productSchema.index({ category: 1 });
+productSchema.index({ status: 1 });
+productSchema.index({ SQL_level: 1 });
+productSchema.index({ isActive: 1 });
+productSchema.index({ views: -1 });
+productSchema.index({ sales: -1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ tags: 1 });
+productSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
-// Virtual for discount calculation
-productSchema.virtual('discountAmount').get(function() {
+// Pre-save middleware
+productSchema.pre('save', function(next) {
+  // Generate slug if not provided
+  if (!this.slug) {
+    this.slug = slugify(this.title, { lower: true, strict: true });
+  }
+
+  // Generate SKU if not provided
+  if (!this.sku) {
+    this.sku = `PRD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Calculate discount percentage
   if (this.originalPrice && this.price) {
+    this.discountPercentage = Math.round(((this.originalPrice - this.price) / this.originalPrice) * 100);
+  }
+
+  this.updatedAt = new Date();
+  next();
+});
+
+// Instance methods
+productSchema.methods.incrementViews = function() {
+  this.views += 1;
+  return this.save();
+};
+
+productSchema.methods.incrementSales = function(quantity = 1) {
+  this.sales += quantity;
+  return this.save();
+};
+
+productSchema.methods.updateRating = function(newRating) {
+  const totalRating = (this.rating.average * this.rating.count) + newRating;
+  this.rating.count += 1;
+  this.rating.average = totalRating / this.rating.count;
+  return this.save();
+};
+
+productSchema.methods.isInStock = function() {
+  return this.stock > 0;
+};
+
+productSchema.methods.getFinalPrice = function() {
+  return this.price;
+};
+
+productSchema.methods.getDiscountAmount = function() {
+  if (this.originalPrice) {
     return this.originalPrice - this.price;
   }
   return 0;
-});
-
-// Virtual for discount percentage calculation
-productSchema.virtual('calculatedDiscountPercentage').get(function() {
-  if (this.originalPrice && this.price) {
-    return Math.round(((this.originalPrice - this.price) / this.originalPrice) * 100);
-  }
-  return 0;
-});
-
-// Virtual for primary image
-productSchema.virtual('primaryImage').get(function() {
-  const primary = this.images.find(img => img.isPrimary);
-  return primary ? primary.url : (this.images[0] ? this.images[0].url : this.thumbnail);
-});
-
-// Virtual for in stock status
-productSchema.virtual('inStock').get(function() {
-  return this.stock > 0;
-});
-
-// Virtual for low stock status
-productSchema.virtual('lowStock').get(function() {
-  return this.stock > 0 && this.stock <= 10;
-});
-
-// Pre-save middleware to generate slug
-productSchema.pre('save', function(next) {
-  if (this.isModified('name')) {
-    this.slug = generateSlug(this.name);
-  }
-  next();
-});
-
-// Pre-save middleware to update timestamps
-productSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
-
-// Static method to find featured products
-productSchema.statics.findFeatured = function() {
-  return this.find({
-    featured: true,
-    status: 'active',
-    isDeleted: false
-  }).populate('category');
 };
 
-// Static method to find trending products
-productSchema.statics.findTrending = function() {
-  return this.find({
-    trending: true,
-    status: 'active',
-    isDeleted: false
-  }).populate('category');
+// Static methods
+productSchema.statics.findBySlug = function(slug) {
+  return this.findOne({ slug, isActive: true, status: 'approved' });
 };
 
-// Static method to find best sellers
-productSchema.statics.findBestSellers = function() {
+productSchema.statics.findTrending = function(limit = 10) {
   return this.find({
-    bestSeller: true,
-    status: 'active',
-    isDeleted: false
-  }).populate('category');
+    isActive: true,
+    status: 'approved'
+  })
+  .sort({ views: -1, sales: -1 })
+  .limit(limit);
 };
 
-// Static method to find new arrivals
-productSchema.statics.findNewArrivals = function() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
+productSchema.statics.findBySQLLevel = function(sqlLevel) {
   return this.find({
-    createdAt: { $gte: thirtyDaysAgo },
-    status: 'active',
-    isDeleted: false
-  }).populate('category');
+    SQL_level: sqlLevel,
+    isActive: true,
+    status: 'approved'
+  });
 };
 
-// Instance method to update rating
-productSchema.methods.updateRating = function(newRating) {
-  const oldRating = this.ratings.average;
-  const oldCount = this.ratings.count;
+productSchema.statics.searchProducts = function(query, filters = {}) {
+  const searchQuery = {
+    isActive: true,
+    status: 'approved'
+  };
 
-  this.ratings.count += 1;
-  this.ratings.average = ((oldRating * oldCount) + newRating) / this.ratings.count;
-
-  // Update rating distribution
-  const ratingKey = Math.floor(newRating);
-  if (this.ratings.distribution[ratingKey] !== undefined) {
-    this.ratings.distribution[ratingKey] += 1;
+  if (query) {
+    searchQuery.$or = [
+      { title: { $regex: query, $options: 'i' } },
+      { description: { $regex: query, $options: 'i' } },
+      { tags: { $in: [new RegExp(query, 'i')] } }
+    ];
   }
 
-  return this.save();
-};
-
-// Instance method to increment view count
-productSchema.methods.incrementViewCount = function() {
-  this.viewCount += 1;
-  return this.save();
-};
-
-// Instance method to increment purchase count
-productSchema.methods.incrementPurchaseCount = function() {
-  this.purchaseCount += 1;
-  return this.save();
-};
-
-// Instance method to increment wishlist count
-productSchema.methods.incrementWishlistCount = function() {
-  this.wishlistCount += 1;
-  return this.save();
-};
-
-// Instance method to decrement wishlist count
-productSchema.methods.decrementWishlistCount = function() {
-  if (this.wishlistCount > 0) {
-    this.wishlistCount -= 1;
+  if (filters.category) {
+    searchQuery.category = filters.category;
   }
-  return this.save();
+
+  if (filters.minPrice || filters.maxPrice) {
+    searchQuery.price = {};
+    if (filters.minPrice) searchQuery.price.$gte = parseFloat(filters.minPrice);
+    if (filters.maxPrice) searchQuery.price.$lte = parseFloat(filters.maxPrice);
+  }
+
+  if (filters.sqlLevel) {
+    searchQuery.SQL_level = filters.sqlLevel;
+  }
+
+  return this.find(searchQuery)
+    .populate('sellerId', 'name shopName location SQL_level verified')
+    .sort({ createdAt: -1 });
+};
+
+productSchema.statics.getPopularTags = function(limit = 20) {
+  return this.aggregate([
+    { $match: { isActive: true, status: 'approved' } },
+    { $unwind: '$tags' },
+    {
+      $group: {
+        _id: '$tags',
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { count: -1 } },
+    { $limit: limit }
+  ]);
 };
 
 module.exports = mongoose.model('Product', productSchema);

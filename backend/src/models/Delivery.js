@@ -1,145 +1,191 @@
 const mongoose = require('mongoose');
 
 const deliverySchema = new mongoose.Schema({
+  // Order Reference
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
-    required: true,
-    unique: true
-  },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
     required: true
   },
-  franchise: {
+  // Rider Assignment
+  riderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rider',
+    required: true
+  },
+  // Franchise Information
+  franchiseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Franchise',
     required: true
   },
-  deliveryAddress: {
-    street: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    city: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    state: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    zipCode: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    country: {
-      type: String,
-      required: true,
-      trim: true,
-      default: 'Pakistan'
-    },
+  franchiseType: {
+    type: String,
+    enum: ['sub', 'master', 'corporate'],
+    default: 'sub'
+  },
+  // Delivery Details
+  pickupLocation: {
+    address: String,
+    city: String,
+    area: String,
     coordinates: {
-      latitude: Number,
-      longitude: Number
+      lat: Number,
+      lng: Number
     }
   },
-  deliveryType: {
-    type: String,
-    enum: ['standard', 'express', 'same_day'],
-    default: 'standard'
+  deliveryLocation: {
+    address: String,
+    city: String,
+    area: String,
+    coordinates: {
+      lat: Number,
+      lng: Number
+    }
   },
-  deliveryFee: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  specialInstructions: {
-    type: String,
-    trim: true,
-    maxlength: 500
-  },
+  // Status Tracking
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'cancelled'],
-    default: 'pending'
+    enum: ['assigned', 'picked', 'in_transit', 'delivered', 'failed', 'cancelled'],
+    default: 'assigned'
   },
+  // Time Tracking
+  timeLogs: {
+    assignedAt: {
+      type: Date,
+      default: Date.now
+    },
+    pickedAt: Date,
+    inTransitAt: Date,
+    deliveredAt: Date,
+    failedAt: Date,
+    cancelledAt: Date
+  },
+  // Delivery Performance
   estimatedDeliveryTime: {
     type: Number, // in minutes
     required: true
   },
   actualDeliveryTime: {
     type: Number, // in minutes
-    default: null
+    default: 0
   },
+  isOnTime: {
+    type: Boolean,
+    default: true
+  },
+  // Distance & Route
+  distance: {
+    type: Number, // in kilometers
+    default: 0
+  },
+  route: {
+    polyline: String,
+    distance: Number,
+    duration: Number
+  },
+  // Payment & Earnings
+  deliveryFee: {
+    type: Number,
+    required: true
+  },
+  riderEarnings: {
+    type: Number,
+    default: 0
+  },
+  franchiseEarnings: {
+    type: Number,
+    default: 0
+  },
+  // Customer Information
+  customerInfo: {
+    name: String,
+    phone: String,
+    email: String,
+    address: String
+  },
+  // Delivery Instructions
+  deliveryInstructions: {
+    type: String,
+    trim: true
+  },
+  // Package Details
+  packageDetails: {
+    weight: Number,
+    dimensions: {
+      length: Number,
+      width: Number,
+      height: Number
+    },
+    fragile: {
+      type: Boolean,
+      default: false
+    },
+    specialHandling: String
+  },
+  // Real-time Tracking
   currentLocation: {
-    latitude: Number,
-    longitude: Number,
-    address: String,
-    timestamp: Date
-  },
-  locationUpdates: [{
-    location: {
-      latitude: Number,
-      longitude: Number,
-      address: String
-    },
-    timestamp: {
-      type: Date,
-      default: Date.now
-    },
-    updatedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
-  }],
-  statusHistory: [{
-    status: {
-      type: String,
-      enum: ['pending', 'accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'cancelled']
+    coordinates: {
+      lat: Number,
+      lng: Number
     },
     updatedAt: {
       type: Date,
       default: Date.now
+    }
+  },
+  // Delivery Proof
+  deliveryProof: {
+    signature: String,
+    image: String,
+    notes: String,
+    deliveredTo: String
+  },
+  // Issues & Complaints
+  issues: [{
+    type: { type: String, enum: ['late', 'damaged', 'wrong_item', 'not_delivered', 'customer_unavailable'] },
+    description: String,
+    reportedAt: {
+      type: Date,
+      default: Date.now
     },
-    updatedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+    resolved: {
+      type: Boolean,
+      default: false
     },
-    notes: String
+    resolution: String
   }],
-  notes: {
-    type: String,
-    trim: true,
-    maxlength: 1000
+  // Ratings & Feedback
+  customerRating: {
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5
+    },
+    feedback: String,
+    ratedAt: Date
   },
-  rating: {
+  // Escalation & Fines
+  escalated: {
+    type: Boolean,
+    default: false
+  },
+  escalationLevel: {
+    type: String,
+    enum: ['none', 'sub_franchise', 'master_franchise', 'corporate'],
+    default: 'none'
+  },
+  fineAmount: {
     type: Number,
-    min: 1,
-    max: 5,
-    default: null
+    default: 0
   },
-  review: {
-    type: String,
-    trim: true,
-    maxlength: 500
+  fineReason: String,
+  // Status
+  isActive: {
+    type: Boolean,
+    default: true
   },
-  cancellationReason: {
-    type: String,
-    trim: true
-  },
-  cancelledAt: {
-    type: Date
-  },
-  cancelledBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
+  // Timestamps
   createdAt: {
     type: Date,
     default: Date.now
@@ -149,58 +195,21 @@ const deliverySchema = new mongoose.Schema({
     default: Date.now
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
 // Indexes
-deliverySchema.index({ orderId: 1 }, { unique: true });
-deliverySchema.index({ user: 1 });
-deliverySchema.index({ franchise: 1 });
+deliverySchema.index({ orderId: 1 });
+deliverySchema.index({ riderId: 1 });
+deliverySchema.index({ franchiseId: 1 });
 deliverySchema.index({ status: 1 });
-deliverySchema.index({ createdAt: -1 });
-deliverySchema.index({ 'deliveryAddress.city': 1 });
-deliverySchema.index({ 'deliveryAddress.state': 1 });
-
-// Virtual for delivery duration
-deliverySchema.virtual('deliveryDuration').get(function() {
-  if (this.actualDeliveryTime) {
-    return this.actualDeliveryTime;
-  }
-  return null;
-});
-
-// Virtual for is delayed
-deliverySchema.virtual('isDelayed').get(function() {
-  if (this.actualDeliveryTime && this.estimatedDeliveryTime) {
-    return this.actualDeliveryTime > this.estimatedDeliveryTime;
-  }
-  return false;
-});
-
-// Virtual for delivery progress percentage
-deliverySchema.virtual('progressPercentage').get(function() {
-  const statusOrder = ['pending', 'accepted', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered'];
-  const currentIndex = statusOrder.indexOf(this.status);
-  return currentIndex >= 0 ? Math.round((currentIndex / (statusOrder.length - 1)) * 100) : 0;
-});
-
-// Virtual for full delivery address
-deliverySchema.virtual('fullDeliveryAddress').get(function() {
-  const addr = this.deliveryAddress;
-  if (!addr) return '';
-
-  const parts = [
-    addr.street,
-    addr.city,
-    addr.state,
-    addr.zipCode,
-    addr.country
-  ].filter(Boolean);
-
-  return parts.join(', ');
-});
+deliverySchema.index({ franchiseType: 1 });
+deliverySchema.index({ isActive: 1 });
+deliverySchema.index({ escalated: 1 });
+deliverySchema.index({ 'timeLogs.assignedAt': -1 });
+deliverySchema.index({ 'timeLogs.deliveredAt': -1 });
+deliverySchema.index({ 'deliveryLocation.city': 1 });
+deliverySchema.index({ 'pickupLocation.city': 1 });
 
 // Pre-save middleware
 deliverySchema.pre('save', function(next) {
@@ -208,162 +217,210 @@ deliverySchema.pre('save', function(next) {
   next();
 });
 
-// Instance method to update status
-deliverySchema.methods.updateStatus = function(status, updatedBy, notes = '') {
-  this.status = status;
-  this.notes = notes || this.notes;
+// Instance methods
+deliverySchema.methods.updateStatus = function(newStatus) {
+  this.status = newStatus;
 
-  this.statusHistory.push({
-    status,
-    updatedAt: new Date(),
-    updatedBy,
-    notes
-  });
+  // Update time logs
+  switch (newStatus) {
+    case 'picked':
+      this.timeLogs.pickedAt = new Date();
+      break;
+    case 'in_transit':
+      this.timeLogs.inTransitAt = new Date();
+      break;
+    case 'delivered':
+      this.timeLogs.deliveredAt = new Date();
+      this.actualDeliveryTime = this.calculateDeliveryTime();
+      this.isOnTime = this.actualDeliveryTime <= this.estimatedDeliveryTime;
+      break;
+    case 'failed':
+      this.timeLogs.failedAt = new Date();
+      break;
+    case 'cancelled':
+      this.timeLogs.cancelledAt = new Date();
+      break;
+  }
 
   return this.save();
 };
 
-// Instance method to add location update
-deliverySchema.methods.addLocationUpdate = function(location, updatedBy) {
-  this.locationUpdates.push({
-    location,
-    timestamp: new Date(),
-    updatedBy
-  });
+deliverySchema.methods.calculateDeliveryTime = function() {
+  if (!this.timeLogs.assignedAt || !this.timeLogs.deliveredAt) {
+    return 0;
+  }
 
+  const diff = this.timeLogs.deliveredAt - this.timeLogs.assignedAt;
+  return Math.round(diff / (1000 * 60)); // Convert to minutes
+};
+
+deliverySchema.methods.updateLocation = function(lat, lng) {
   this.currentLocation = {
-    latitude: location.latitude,
-    longitude: location.longitude,
-    address: location.address,
-    timestamp: new Date()
+    coordinates: { lat, lng },
+    updatedAt: new Date()
   };
+  return this.save();
+};
+
+deliverySchema.methods.addIssue = function(type, description) {
+  this.issues.push({
+    type,
+    description,
+    reportedAt: new Date()
+  });
+  return this.save();
+};
+
+deliverySchema.methods.escalate = function(level, reason) {
+  this.escalated = true;
+  this.escalationLevel = level;
+  this.fineReason = reason;
+
+  // Calculate fine based on escalation level
+  switch (level) {
+    case 'sub_franchise':
+      this.fineAmount = this.deliveryFee * 0.02; // 2%
+      break;
+    case 'master_franchise':
+      this.fineAmount = this.deliveryFee * 0.03; // 3%
+      break;
+    case 'corporate':
+      this.fineAmount = this.deliveryFee * 0.05; // 5%
+      break;
+  }
 
   return this.save();
 };
 
-// Instance method to complete delivery
-deliverySchema.methods.completeDelivery = function(actualTime, updatedBy) {
-  this.status = 'delivered';
-  this.actualDeliveryTime = actualTime;
+deliverySchema.methods.addCustomerRating = function(rating, feedback) {
+  this.customerRating = {
+    rating,
+    feedback,
+    ratedAt: new Date()
+  };
+  return this.save();
+};
 
-  this.statusHistory.push({
+// Static methods
+deliverySchema.statics.findByOrder = function(orderId) {
+  return this.findOne({ orderId }).populate('riderId franchiseId');
+};
+
+deliverySchema.statics.findByRider = function(riderId) {
+  return this.find({ riderId }).sort({ createdAt: -1 });
+};
+
+deliverySchema.statics.findByFranchise = function(franchiseId) {
+  return this.find({ franchiseId }).sort({ createdAt: -1 });
+};
+
+deliverySchema.statics.findByStatus = function(status) {
+  return this.find({ status, isActive: true }).populate('riderId franchiseId');
+};
+
+deliverySchema.statics.findEscalated = function() {
+  return this.find({ escalated: true }).populate('riderId franchiseId');
+};
+
+deliverySchema.statics.findLateDeliveries = function() {
+  return this.find({
     status: 'delivered',
-    updatedAt: new Date(),
-    updatedBy,
-    notes: 'Delivery completed'
-  });
-
-  return this.save();
+    isOnTime: false,
+    isActive: true
+  }).populate('riderId franchiseId');
 };
 
-// Instance method to cancel delivery
-deliverySchema.methods.cancelDelivery = function(reason, cancelledBy) {
-  this.status = 'cancelled';
-  this.cancellationReason = reason;
-  this.cancelledAt = new Date();
-  this.cancelledBy = cancelledBy;
-
-  this.statusHistory.push({
-    status: 'cancelled',
-    updatedAt: new Date(),
-    updatedBy: cancelledBy,
-    notes: reason
-  });
-
-  return this.save();
-};
-
-// Instance method to rate delivery
-deliverySchema.methods.rateDelivery = function(rating, review = '') {
-  this.rating = rating;
-  this.review = review;
-  return this.save();
-};
-
-// Static method to get deliveries by status
-deliverySchema.statics.findByStatus = function(status, options = {}) {
-  const { page = 1, limit = 20, franchiseId } = options;
-
-  const query = { status };
-  if (franchiseId) {
-    query.franchise = franchiseId;
-  }
-
-  return this.find(query)
-    .populate('orderId', 'orderNumber totalAmount')
-    .populate('user', 'firstName lastName phone')
-    .populate('franchise', 'name location')
-    .sort({ createdAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit);
-};
-
-// Static method to get user deliveries
-deliverySchema.statics.findByUser = function(userId, options = {}) {
-  const { page = 1, limit = 20, status } = options;
-
-  const query = { user: userId };
-  if (status) {
-    query.status = status;
-  }
-
-  return this.find(query)
-    .populate('orderId', 'orderNumber totalAmount')
-    .populate('franchise', 'name location contactInfo')
-    .sort({ createdAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit);
-};
-
-// Static method to get franchise deliveries
-deliverySchema.statics.findByFranchise = function(franchiseId, options = {}) {
-  const { page = 1, limit = 20, status } = options;
-
-  const query = { franchise: franchiseId };
-  if (status) {
-    query.status = status;
-  }
-
-  return this.find(query)
-    .populate('orderId', 'orderNumber totalAmount')
-    .populate('user', 'firstName lastName phone')
-    .sort({ createdAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit);
-};
-
-// Static method to get delivery statistics
-deliverySchema.statics.getStats = function(filters = {}) {
-  const pipeline = [
-    { $match: filters },
+deliverySchema.statics.getDeliveryStats = function() {
+  return this.aggregate([
+    { $match: { isActive: true } },
     {
       $group: {
         _id: null,
         totalDeliveries: { $sum: 1 },
-        totalRevenue: { $sum: '$deliveryFee' },
+        successfulDeliveries: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0]
+          }
+        },
+        failedDeliveries: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'failed'] }, 1, 0]
+          }
+        },
+        onTimeDeliveries: {
+          $sum: {
+            $cond: ['$isOnTime', 1, 0]
+          }
+        },
+        escalatedDeliveries: {
+          $sum: {
+            $cond: ['$escalated', 1, 0]
+          }
+        },
+        totalFines: { $sum: '$fineAmount' },
         averageDeliveryTime: { $avg: '$actualDeliveryTime' },
-        averageRating: { $avg: '$rating' },
-        statusDistribution: {
-          $push: '$status'
-        }
+        totalEarnings: { $sum: '$deliveryFee' }
       }
     }
-  ];
-
-  return this.aggregate(pipeline);
+  ]);
 };
 
-// Static method to get delayed deliveries
-deliverySchema.statics.getDelayedDeliveries = function() {
-  return this.find({
-    status: { $in: ['accepted', 'picked_up', 'in_transit', 'out_for_delivery'] },
-    createdAt: {
-      $lte: new Date(Date.now() - 24 * 60 * 60 * 1000) // More than 24 hours old
+deliverySchema.statics.getFranchiseDeliveryStats = function(franchiseId) {
+  return this.aggregate([
+    { $match: { franchiseId: mongoose.Types.ObjectId(franchiseId), isActive: true } },
+    {
+      $group: {
+        _id: '$franchiseType',
+        totalDeliveries: { $sum: 1 },
+        successfulDeliveries: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0]
+          }
+        },
+        failedDeliveries: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'failed'] }, 1, 0]
+          }
+        },
+        escalatedDeliveries: {
+          $sum: {
+            $cond: ['$escalated', 1, 0]
+          }
+        },
+        totalFines: { $sum: '$fineAmount' },
+        totalEarnings: { $sum: '$deliveryFee' }
+      }
     }
-  })
-  .populate('orderId', 'orderNumber')
-  .populate('user', 'firstName lastName phone')
-  .populate('franchise', 'name contactInfo');
+  ]);
+};
+
+deliverySchema.statics.getRiderDeliveryStats = function(riderId) {
+  return this.aggregate([
+    { $match: { riderId: mongoose.Types.ObjectId(riderId), isActive: true } },
+    {
+      $group: {
+        _id: null,
+        totalDeliveries: { $sum: 1 },
+        successfulDeliveries: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0]
+          }
+        },
+        failedDeliveries: {
+          $sum: {
+            $cond: [{ $eq: ['$status', 'failed'] }, 1, 0]
+          }
+        },
+        onTimeDeliveries: {
+          $sum: {
+            $cond: ['$isOnTime', 1, 0]
+          }
+        },
+        totalEarnings: { $sum: '$riderEarnings' },
+        averageDeliveryTime: { $avg: '$actualDeliveryTime' }
+      }
+    }
+  ]);
 };
 
 module.exports = mongoose.model('Delivery', deliverySchema);

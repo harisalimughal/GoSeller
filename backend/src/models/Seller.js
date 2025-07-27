@@ -2,152 +2,248 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const sellerSchema = new mongoose.Schema({
+  // Basic Information
   name: {
     type: String,
-    required: [true, 'Seller name is required'],
+    required: true,
     trim: true,
-    maxlength: [100, 'Name cannot exceed 100 characters']
+    maxlength: 100
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: true,
     unique: true,
     lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    trim: true
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false
+    required: true,
+    minlength: 6
   },
   contact: {
     type: String,
-    required: [true, 'Contact number is required'],
-    match: [/^(\+92|0)?[0-9]{10}$/, 'Please enter a valid Pakistani phone number']
+    required: true,
+    trim: true
   },
   location: {
-    address: {
-      type: String,
-      required: [true, 'Address is required']
+    type: String,
+    required: true,
+    trim: true
+  },
+  // Seller Type & Profile
+  sellerType: {
+    type: String,
+    enum: ['shopkeeper', 'store', 'wholesaler', 'distributor', 'dealer', 'company'],
+    required: true
+  },
+  profileType: {
+    type: String,
+    enum: ['product_seller', 'service_provider', 'both'],
+    default: 'product_seller'
+  },
+  shopName: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 200
+  },
+  // SQL Levels (Separate for Products & Services)
+  productSQL_level: {
+    type: String,
+    enum: ['Free', 'Basic', 'Normal', 'High', 'VIP'],
+    default: 'Free'
+  },
+  serviceSQL_level: {
+    type: String,
+    enum: ['Free', 'Basic', 'Normal', 'High', 'VIP'],
+    default: 'Free'
+  },
+  // Verification Status
+  verified: {
+    type: Boolean,
+    default: false
+  },
+  // KYC Documents
+  kyc_docs: {
+    cnic: {
+      number: String,
+      frontImage: String,
+      backImage: String,
+      verified: { type: Boolean, default: false }
     },
-    city: {
-      type: String,
-      required: [true, 'City is required']
+    businessLicense: {
+      number: String,
+      image: String,
+      verified: { type: Boolean, default: false }
     },
-    province: {
+    addressProof: {
       type: String,
-      required: [true, 'Province is required']
+      image: String,
+      verified: { type: Boolean, default: false }
     },
+    bankStatement: {
+      image: String,
+      verified: { type: Boolean, default: false }
+    }
+  },
+  // Business Details
+  businessDetails: {
+    businessName: String,
+    businessType: { type: String, enum: ['individual', 'partnership', 'company'] },
+    registrationNumber: String,
+    taxNumber: String,
+    establishedYear: Number,
+    employeeCount: Number,
+    annualRevenue: Number
+  },
+  // Service Provider Specific
+  serviceCategories: [{
+    type: String,
+    enum: [
+      'Electrician', 'Plumber', 'AC Technician', 'Carpenter', 'Painter',
+      'Tutor', 'Driver', 'Chef', 'Photographer', 'Beautician',
+      'Tailor', 'Mechanic', 'Gardener', 'Security Guard', 'Housekeeper',
+      'Interior Designer', 'Architect', 'Lawyer', 'Doctor', 'Consultant',
+      'IT Services', 'Marketing', 'Design', 'Writing', 'Translation',
+      'Event Planning', 'Wedding Services', 'Cleaning', 'Moving', 'Other'
+    ]
+  }],
+  serviceAreas: [{
+    type: String,
+    trim: true
+  }],
+  // PSS, EDR, EMO Verification (Separate for Products & Services)
+  productVerification: {
+    pss: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
+    edr: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
+    emo: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String }
+  },
+  serviceVerification: {
+    pss: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
+    edr: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
+    emo: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String }
+  },
+  // Contact Information
+  contactInfo: {
+    phone: String,
+    whatsapp: String,
+    email: String,
+    website: String,
+    socialMedia: {
+      facebook: String,
+      instagram: String,
+      linkedin: String
+    }
+  },
+  // Location Details
+  address: {
+    street: String,
+    city: String,
+    area: String,
+    postalCode: String,
     coordinates: {
       lat: Number,
       lng: Number
     }
   },
-  sellerType: {
+  // Account Status
+  status: {
     type: String,
-    required: [true, 'Seller type is required'],
-    enum: ['shopkeeper', 'store', 'wholesaler', 'distributor', 'dealer', 'company'],
-    default: 'shopkeeper'
+    enum: ['active', 'suspended', 'locked', 'pending'],
+    default: 'pending'
   },
-  shopName: {
-    type: String,
-    required: [true, 'Shop name is required'],
-    trim: true,
-    maxlength: [100, 'Shop name cannot exceed 100 characters']
-  },
-  SQL_level: {
-    type: String,
-    enum: ['Free', 'Basic', 'Normal', 'High', 'VIP'],
-    default: 'Free'
-  },
-  verified: {
-    type: Boolean,
-    default: false
-  },
-  kyc_docs: [{
-    documentType: {
-      type: String,
-      enum: ['CNIC', 'Business_License', 'Tax_Certificate', 'Bank_Statement']
-    },
-    documentUrl: String,
-    uploadedAt: {
-      type: Date,
-      default: Date.now
-    },
-    verified: {
-      type: Boolean,
-      default: false
-    }
-  }],
-  businessDetails: {
-    businessId: String,
-    taxNumber: String,
-    bankAccount: String,
-    businessCategory: String
-  },
-  profileImage: String,
-  coverImage: String,
   isActive: {
     type: Boolean,
     default: true
   },
-  lastLogin: Date,
+  // Login Security
+  lastLogin: {
+    type: Date
+  },
   loginAttempts: {
     type: Number,
     default: 0
   },
-  lockUntil: Date
+  lockUntil: {
+    type: Date
+  },
+  // Analytics
+  totalProducts: {
+    type: Number,
+    default: 0
+  },
+  totalServices: {
+    type: Number,
+    default: 0
+  },
+  totalOrders: {
+    type: Number,
+    default: 0
+  },
+  totalRevenue: {
+    type: Number,
+    default: 0
+  },
+  rating: {
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0
+    }
+  },
+  // Timestamps
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  timestamps: true
 });
 
 // Indexes
-sellerSchema.index({ email: 1 });
+sellerSchema.index({ email: 1 }, { unique: true });
+sellerSchema.index({ contact: 1 });
 sellerSchema.index({ sellerType: 1 });
-sellerSchema.index({ SQL_level: 1 });
+sellerSchema.index({ profileType: 1 });
+sellerSchema.index({ productSQL_level: 1 });
+sellerSchema.index({ serviceSQL_level: 1 });
 sellerSchema.index({ verified: 1 });
-sellerSchema.index({ 'location.city': 1 });
+sellerSchema.index({ status: 1 });
+sellerSchema.index({ isActive: 1 });
+sellerSchema.index({ 'address.city': 1 });
+sellerSchema.index({ 'address.area': 1 });
+sellerSchema.index({ serviceCategories: 1 });
 
-// Virtual for full address
-sellerSchema.virtual('fullAddress').get(function() {
-  return `${this.location.address}, ${this.location.city}, ${this.location.province}`;
-});
-
-// Virtual for seller status
-sellerSchema.virtual('status').get(function() {
-  if (!this.isActive) return 'Suspended';
-  if (!this.verified) return 'Pending Verification';
-  return 'Active';
-});
-
-// Pre-save middleware to hash password
+// Pre-save middleware
 sellerSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-
-  try {
-    const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+  // Hash password if modified
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 12);
   }
+
+  this.updatedAt = new Date();
+  next();
 });
 
-// Method to compare password
+// Instance methods
 sellerSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Method to check if account is locked
 sellerSchema.methods.isLocked = function() {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 };
 
-// Method to increment login attempts
 sellerSchema.methods.incLoginAttempts = function() {
   // If we have a previous lock that has expired, restart at 1
   if (this.lockUntil && this.lockUntil < Date.now()) {
@@ -167,32 +263,121 @@ sellerSchema.methods.incLoginAttempts = function() {
   return this.updateOne(updates);
 };
 
-// Method to reset login attempts
 sellerSchema.methods.resetLoginAttempts = function() {
   return this.updateOne({
-    $unset: { loginAttempts: 1, lockUntil: 1 },
-    $set: { lastLogin: Date.now() }
+    $unset: { loginAttempts: 1, lockUntil: 1 }
   });
 };
 
-// Static method to find by email
+sellerSchema.methods.isProductSeller = function() {
+  return this.profileType === 'product_seller' || this.profileType === 'both';
+};
+
+sellerSchema.methods.isServiceProvider = function() {
+  return this.profileType === 'service_provider' || this.profileType === 'both';
+};
+
+sellerSchema.methods.getSQLLevel = function(type = 'product') {
+  return type === 'service' ? this.serviceSQL_level : this.productSQL_level;
+};
+
+sellerSchema.methods.isFullyVerified = function(type = 'product') {
+  const verification = type === 'service' ? this.serviceVerification : this.productVerification;
+  return verification.pss.status === 'approved' &&
+         verification.edr.status === 'approved' &&
+         verification.emo.status === 'approved';
+};
+
+sellerSchema.methods.updateProductCount = function(count) {
+  this.totalProducts = count;
+  return this.save();
+};
+
+sellerSchema.methods.updateServiceCount = function(count) {
+  this.totalServices = count;
+  return this.save();
+};
+
+sellerSchema.methods.updateRating = function(newRating) {
+  const totalRating = (this.rating.average * this.rating.count) + newRating;
+  this.rating.count += 1;
+  this.rating.average = totalRating / this.rating.count;
+  return this.save();
+};
+
+// Static methods
 sellerSchema.statics.findByEmail = function(email) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-// Static method to find verified sellers
-sellerSchema.statics.findVerified = function() {
-  return this.find({ verified: true, isActive: true });
+sellerSchema.statics.findBySQLLevel = function(sqlLevel, type = 'product') {
+  const field = type === 'service' ? 'serviceSQL_level' : 'productSQL_level';
+  return this.find({ [field]: sqlLevel, isActive: true });
 };
 
-// Static method to find by seller type
-sellerSchema.statics.findByType = function(type) {
-  return this.find({ sellerType: type, verified: true, isActive: true });
+sellerSchema.statics.findServiceProviders = function() {
+  return this.find({
+    profileType: { $in: ['service_provider', 'both'] },
+    isActive: true
+  });
 };
 
-// Static method to find by SQL level
-sellerSchema.statics.findBySQLLevel = function(level) {
-  return this.find({ SQL_level: level, verified: true, isActive: true });
+sellerSchema.statics.findProductSellers = function() {
+  return this.find({
+    profileType: { $in: ['product_seller', 'both'] },
+    isActive: true
+  });
+};
+
+sellerSchema.statics.findByServiceCategory = function(category) {
+  return this.find({
+    serviceCategories: category,
+    profileType: { $in: ['service_provider', 'both'] },
+    isActive: true
+  });
+};
+
+sellerSchema.statics.findByLocation = function(city) {
+  return this.find({
+    'address.city': { $regex: city, $options: 'i' },
+    isActive: true
+  });
+};
+
+sellerSchema.statics.getSellerStats = function() {
+  return this.aggregate([
+    { $match: { isActive: true } },
+    {
+      $group: {
+        _id: null,
+        totalSellers: { $sum: 1 },
+        productSellers: {
+          $sum: {
+            $cond: [
+              { $in: ['$profileType', ['product_seller', 'both']] },
+              1,
+              0
+            ]
+          }
+        },
+        serviceProviders: {
+          $sum: {
+            $cond: [
+              { $in: ['$profileType', ['service_provider', 'both']] },
+              1,
+              0
+            ]
+          }
+        },
+        verifiedSellers: {
+          $sum: {
+            $cond: ['$verified', 1, 0]
+          }
+        },
+        averageRating: { $avg: '$rating.average' }
+      }
+    }
+  ]);
 };
 
 module.exports = mongoose.model('Seller', sellerSchema);

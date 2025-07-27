@@ -1,419 +1,657 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { body, validationResult } = require('express-validator');
 const Seller = require('../models/Seller');
-const SQLUpgradeRequest = require('../models/SQLUpgradeRequest');
-const { ApiResponse } = require('../utils/ApiResponse');
-const { ApiError } = require('../utils/ApiError');
+const User = require('../models/User');
+const Product = require('../models/Product');
+const Order = require('../models/Order');
 const { catchAsync } = require('../utils/catchAsync');
-const { sellerAuth, requireSellerVerification } = require('../middleware/sellerAuth');
+const { ApiError } = require('../utils/ApiError');
+const { ApiResponse } = require('../utils/ApiResponse');
 
 const router = express.Router();
 
-// Seller Registration (Public)
-router.post('/register', catchAsync(async (req, res) => {
+// ========================================
+// SELLER REGISTRATION & PROFILE
+// ========================================
+
+// Register new seller
+router.post('/register', [
+  body('businessName').trim().notEmpty().withMessage('Business name is required'),
+  body('businessType').isIn(['individual', 'company', 'partnership']).withMessage('Valid business type is required'),
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('phone').isMobilePhone().withMessage('Valid phone number is required'),
+  body('address').isObject().withMessage('Address is required'),
+  body('documents').isArray().withMessage('Documents are required'),
+  body('bankDetails').isObject().withMessage('Bank details are required')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
   const {
-    name,
+    businessName,
+    businessType,
     email,
-    password,
-    contact,
-    location,
-    sellerType,
-    shopName,
-    businessDetails
+    phone,
+    address,
+    documents,
+    bankDetails,
+    description,
+    categories,
+    socialMedia
   } = req.body;
 
   // Check if seller already exists
-  const existingSeller = await Seller.findByEmail(email);
-  if (existingSeller) {
-    throw new ApiError(400, 'Seller already exists with this email');
-  }
+  const existingSeller = await Seller.findOne({
+    $or: [{ email }, { phone }]
+  });
 
-  // Validate seller type
-  const validSellerTypes = ['shopkeeper', 'store', 'wholesaler', 'distributor', 'dealer', 'company'];
-  if (!validSellerTypes.includes(sellerType)) {
-    throw new ApiError(400, 'Invalid seller type');
+  if (existingSeller) {
+    throw new ApiError(409, 'Seller already exists with this email or phone');
   }
 
   // Create seller
   const seller = new Seller({
-    name,
+    userId: req.user?.userId || 'temp_user_id',
+    businessName,
+    businessType,
     email,
-    password,
-    contact,
-    location,
-    sellerType,
-    shopName,
-    businessDetails
+    phone,
+    address,
+    documents,
+    bankDetails,
+    description,
+    categories,
+    socialMedia,
+    status: 'pending',
+    verificationStatus: 'pending'
   });
 
   await seller.save();
 
-  // Generate JWT token
-  const token = jwt.sign(
-    {
-      sellerId: seller._id,
-      email: seller.email,
-      sellerType: seller.sellerType,
-      SQL_level: seller.SQL_level
-    },
-    process.env.JWT_SECRET || 'your-secret-key',
-    { expiresIn: '7d' }
-  );
-
-  res.status(201).json(new ApiResponse(201, {
+  res.status(201).json(new ApiResponse(201, 'Seller registration successful', {
     seller: {
       id: seller._id,
-      name: seller.name,
-      email: seller.email,
-      shopName: seller.shopName,
-      sellerType: seller.sellerType,
-      SQL_level: seller.SQL_level,
-      verified: seller.verified,
-      status: seller.status
-    },
-    token
-  }, 'Seller registered successfully'));
+      businessName: seller.businessName,
+      status: seller.status,
+      verificationStatus: seller.verificationStatus
+    }
+  }));
 }));
 
-// Seller Login (Public)
-router.post('/login', catchAsync(async (req, res) => {
-  const { email, password } = req.body;
+// Get seller profile
+router.get('/profile', catchAsync(async (req, res) => {
+  const seller = await Seller.findOne({ userId: req.user?.userId })
+    .populate('userId', 'firstName lastName email phone')
+    .populate('categories', 'name');
 
-  // Find seller
-  const seller = await Seller.findByEmail(email).select('+password');
   if (!seller) {
-    throw new ApiError(401, 'Invalid credentials');
+    throw new ApiError(404, 'Seller profile not found');
   }
 
-  // Check if account is locked
-  if (seller.isLocked()) {
-    throw new ApiError(423, 'Account is locked due to too many failed attempts. Please try again later.');
-  }
-
-  // Check password
-  const isPasswordValid = await seller.comparePassword(password);
-  if (!isPasswordValid) {
-    await seller.incLoginAttempts();
-    throw new ApiError(401, 'Invalid credentials');
-  }
-
-  // Reset login attempts on successful login
-  await seller.resetLoginAttempts();
-
-  // Generate JWT token
-  const token = jwt.sign(
-    {
-      sellerId: seller._id,
-      email: seller.email,
-      sellerType: seller.sellerType,
-      SQL_level: seller.SQL_level
-    },
-    process.env.JWT_SECRET || 'your-secret-key',
-    { expiresIn: '7d' }
-  );
-
-  res.json(new ApiResponse(200, {
-    seller: {
-      id: seller._id,
-      name: seller.name,
-      email: seller.email,
-      shopName: seller.shopName,
-      sellerType: seller.sellerType,
-      SQL_level: seller.SQL_level,
-      verified: seller.verified,
-      status: seller.status
-    },
-    token
-  }, 'Login successful'));
+  res.json(new ApiResponse(200, 'Seller profile retrieved successfully', {
+    seller
+  }));
 }));
 
-// Get Seller Profile (Protected)
-router.get('/profile', sellerAuth, catchAsync(async (req, res) => {
-  const seller = await Seller.findById(req.seller.sellerId).select('-password');
-  if (!seller) {
-    throw new ApiError(404, 'Seller not found');
+// Update seller profile
+router.put('/profile', [
+  body('businessName').optional().trim().notEmpty(),
+  body('description').optional().trim(),
+  body('address').optional().isObject(),
+  body('socialMedia').optional().isObject(),
+  body('categories').optional().isArray()
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
   }
 
-  res.json(new ApiResponse(200, { seller }, 'Seller profile retrieved'));
-}));
-
-// Update Seller Profile (Protected)
-router.put('/profile', sellerAuth, catchAsync(async (req, res) => {
-  const {
-    name,
-    contact,
-    location,
-    shopName,
-    businessDetails,
-    profileImage,
-    coverImage
-  } = req.body;
-
-  const seller = await Seller.findById(req.seller.sellerId);
+  const seller = await Seller.findOne({ userId: req.user?.userId });
   if (!seller) {
-    throw new ApiError(404, 'Seller not found');
+    throw new ApiError(404, 'Seller profile not found');
   }
 
   // Update fields
-  if (name) seller.name = name;
-  if (contact) seller.contact = contact;
-  if (location) seller.location = location;
-  if (shopName) seller.shopName = shopName;
-  if (businessDetails) seller.businessDetails = businessDetails;
-  if (profileImage) seller.profileImage = profileImage;
-  if (coverImage) seller.coverImage = coverImage;
-
-  await seller.save();
-
-  res.json(new ApiResponse(200, { seller }, 'Profile updated successfully'));
-}));
-
-// Upload KYC Documents (Protected)
-router.post('/kyc/upload', sellerAuth, catchAsync(async (req, res) => {
-  const { documentType, documentUrl } = req.body;
-
-  const seller = await Seller.findById(req.seller.sellerId);
-  if (!seller) {
-    throw new ApiError(404, 'Seller not found');
-  }
-
-  // Validate document type
-  const validDocTypes = ['CNIC', 'Business_License', 'Tax_Certificate', 'Bank_Statement'];
-  if (!validDocTypes.includes(documentType)) {
-    throw new ApiError(400, 'Invalid document type');
-  }
-
-  // Add document to KYC docs
-  seller.kyc_docs.push({
-    documentType,
-    documentUrl,
-    uploadedAt: new Date()
+  const updateFields = ['businessName', 'description', 'address', 'socialMedia', 'categories'];
+  updateFields.forEach(field => {
+    if (req.body[field] !== undefined) {
+      seller[field] = req.body[field];
+    }
   });
 
   await seller.save();
 
-  res.json(new ApiResponse(200, {
-    kyc_docs: seller.kyc_docs
-  }, 'KYC document uploaded successfully'));
+  res.json(new ApiResponse(200, 'Seller profile updated successfully', {
+    seller
+  }));
 }));
 
-// Request SQL Level Upgrade (Protected)
-router.post('/sql-upgrade', sellerAuth, catchAsync(async (req, res) => {
-  const {
-    type,
-    productId,
-    requestedLevel,
-    reason,
-    businessPlan,
-    financialProjections,
-    submittedDocs
-  } = req.body;
+// ========================================
+// SELLER PRODUCTS
+// ========================================
 
-  const seller = await Seller.findById(req.seller.sellerId);
-  if (!seller) {
-    throw new ApiError(404, 'Seller not found');
+// Get seller products
+router.get('/:id/products', catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { page = 1, limit = 20, status, category } = req.query;
+
+  const query = { sellerId: id };
+
+  if (status) {
+    query.status = status;
   }
 
-  // Validate upgrade request
-  if (type === 'product' && !productId) {
-    throw new ApiError(400, 'Product ID is required for product upgrade');
+  if (category) {
+    query.categoryId = category;
   }
 
-  // Check if seller can request this level
-  const currentLevel = seller.SQL_level;
-  const levelOrder = ['Free', 'Basic', 'Normal', 'High', 'VIP'];
-  const currentIndex = levelOrder.indexOf(currentLevel);
-  const requestedIndex = levelOrder.indexOf(requestedLevel);
+  const products = await Product.find(query)
+    .populate('categoryId', 'name')
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
 
-  if (requestedIndex <= currentIndex) {
-    throw new ApiError(400, 'Requested level must be higher than current level');
-  }
+  const total = await Product.countDocuments(query);
 
-  // Check if there's already a pending request
-  const existingRequest = await SQLUpgradeRequest.findOne({
-    sellerId: seller._id,
-    type,
-    productId: type === 'product' ? productId : null,
-    verificationStatus: 'pending'
-  });
-
-  if (existingRequest) {
-    throw new ApiError(400, 'You already have a pending upgrade request');
-  }
-
-  // Create upgrade request
-  const upgradeRequest = new SQLUpgradeRequest({
-    sellerId: seller._id,
-    productId: type === 'product' ? productId : null,
-    type,
-    currentLevel,
-    requestedLevel,
-    reason,
-    businessPlan,
-    financialProjections,
-    submittedDocs
-  });
-
-  await upgradeRequest.save();
-
-  res.status(201).json(new ApiResponse(201, {
-    upgradeRequest: {
-      id: upgradeRequest._id,
-      type: upgradeRequest.type,
-      currentLevel: upgradeRequest.currentLevel,
-      requestedLevel: upgradeRequest.requestedLevel,
-      verificationStatus: upgradeRequest.verificationStatus,
-      createdAt: upgradeRequest.createdAt
+  res.json(new ApiResponse(200, 'Seller products retrieved successfully', {
+    products,
+    pagination: {
+      current: parseInt(page),
+      pages: Math.ceil(total / limit),
+      total
     }
-  }, 'SQL upgrade request submitted successfully'));
+  }));
 }));
 
-// Get SQL Upgrade Requests (Protected)
-router.get('/sql-upgrade', sellerAuth, catchAsync(async (req, res) => {
-  const requests = await SQLUpgradeRequest.findBySeller(req.seller.sellerId);
+// Get seller product statistics
+router.get('/:id/products/stats', catchAsync(async (req, res) => {
+  const { id } = req.params;
 
-  res.json(new ApiResponse(200, { requests }, 'SQL upgrade requests retrieved'));
-}));
-
-// Get Seller Dashboard Stats (Protected)
-router.get('/dashboard', sellerAuth, catchAsync(async (req, res) => {
-  const seller = await Seller.findById(req.seller.sellerId);
-  if (!seller) {
-    throw new ApiError(404, 'Seller not found');
-  }
-
-  // Get pending SQL upgrade requests
-  const pendingRequests = await SQLUpgradeRequest.find({
-    sellerId: seller._id,
-    verificationStatus: 'pending'
-  }).countDocuments();
-
-  // Get total SQL upgrade requests
-  const totalRequests = await SQLUpgradeRequest.find({
-    sellerId: seller._id
-  }).countDocuments();
-
-  // Get approved requests
-  const approvedRequests = await SQLUpgradeRequest.find({
-    sellerId: seller._id,
-    verificationStatus: 'approved'
-  }).countDocuments();
-
-  // Dashboard stats
-  const dashboardStats = {
-    seller: {
-      name: seller.name,
-      shopName: seller.shopName,
-      sellerType: seller.sellerType,
-      SQL_level: seller.SQL_level,
-      verified: seller.verified,
-      status: seller.status
-    },
-    sqlUpgrades: {
-      pending: pendingRequests,
-      total: totalRequests,
-      approved: approvedRequests
-    },
-    verificationProgress: {
-      pss: seller.kyc_docs.some(doc => doc.documentType === 'CNIC' && doc.verified),
-      edr: seller.kyc_docs.some(doc => doc.documentType === 'Business_License' && doc.verified),
-      emo: seller.kyc_docs.some(doc => doc.documentType === 'Tax_Certificate' && doc.verified)
-    }
-  };
-
-  res.json(new ApiResponse(200, { dashboardStats }, 'Dashboard stats retrieved'));
-}));
-
-// Get Seller Analytics (Protected)
-router.get('/analytics', sellerAuth, catchAsync(async (req, res) => {
-  const seller = await Seller.findById(req.seller.sellerId);
-  if (!seller) {
-    throw new ApiError(404, 'Seller not found');
-  }
-
-  // Get SQL upgrade request analytics
-  const upgradeAnalytics = await SQLUpgradeRequest.aggregate([
-    { $match: { sellerId: seller._id } },
+  const stats = await Product.aggregate([
+    { $match: { sellerId: id } },
     {
       $group: {
-        _id: '$verificationStatus',
-        count: { $sum: 1 }
+        _id: null,
+        totalProducts: { $sum: 1 },
+        activeProducts: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+        inactiveProducts: { $sum: { $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0] } },
+        totalViews: { $sum: '$viewCount' },
+        averageRating: { $avg: '$rating' }
       }
     }
   ]);
 
-  // Get verification progress
-  const verificationProgress = {
-    pss: seller.kyc_docs.filter(doc => doc.documentType === 'CNIC' && doc.verified).length > 0,
-    edr: seller.kyc_docs.filter(doc => doc.documentType === 'Business_License' && doc.verified).length > 0,
-    emo: seller.kyc_docs.filter(doc => doc.documentType === 'Tax_Certificate' && doc.verified).length > 0
-  };
-
-  const analytics = {
-    upgradeAnalytics,
-    verificationProgress,
-    totalDocuments: seller.kyc_docs.length,
-    verifiedDocuments: seller.kyc_docs.filter(doc => doc.verified).length
-  };
-
-  res.json(new ApiResponse(200, { analytics }, 'Analytics retrieved'));
-}));
-
-// Get All Sellers (Admin only - no auth for now)
-router.get('/', catchAsync(async (req, res) => {
-  const { page = 1, limit = 10, sellerType, SQL_level, verified } = req.query;
-
-  const query = { isActive: true };
-  if (sellerType) query.sellerType = sellerType;
-  if (SQL_level) query.SQL_level = SQL_level;
-  if (verified !== undefined) query.verified = verified === 'true';
-
-  const sellers = await Seller.find(query)
-    .select('-password')
-    .limit(limit * 1)
-    .skip((page - 1) * limit)
-    .sort({ createdAt: -1 });
-
-  const total = await Seller.countDocuments(query);
-
-  res.json(new ApiResponse(200, {
-    sellers,
-    pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total,
-      pages: Math.ceil(total / limit)
+  res.json(new ApiResponse(200, 'Product statistics retrieved successfully', {
+    stats: stats[0] || {
+      totalProducts: 0,
+      activeProducts: 0,
+      inactiveProducts: 0,
+      totalViews: 0,
+      averageRating: 0
     }
-  }, 'Sellers retrieved'));
+  }));
 }));
 
-// Get Seller by ID (Admin only - no auth for now)
-router.get('/:id', catchAsync(async (req, res) => {
-  const seller = await Seller.findById(req.params.id).select('-password');
+// ========================================
+// SELLER ORDERS
+// ========================================
+
+// Get seller orders
+router.get('/:id/orders', catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { page = 1, limit = 20, status, dateFrom, dateTo } = req.query;
+
+  const query = { 'items.sellerId': id };
+
+  if (status) {
+    query.status = status;
+  }
+
+  if (dateFrom || dateTo) {
+    query.createdAt = {};
+    if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+    if (dateTo) query.createdAt.$lte = new Date(dateTo);
+  }
+
+  const orders = await Order.find(query)
+    .populate('user', 'firstName lastName email')
+    .populate('items.product', 'name price images')
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+
+  const total = await Order.countDocuments(query);
+
+  res.json(new ApiResponse(200, 'Seller orders retrieved successfully', {
+    orders,
+    pagination: {
+      current: parseInt(page),
+      pages: Math.ceil(total / limit),
+      total
+    }
+  }));
+}));
+
+// Get seller order statistics
+router.get('/:id/orders/stats', catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { period = '30d' } = req.query;
+
+  // Calculate date range
+  const now = new Date();
+  let startDate;
+
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  const stats = await Order.aggregate([
+    {
+      $match: {
+        'items.sellerId': id,
+        createdAt: { $gte: startDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalOrders: { $sum: 1 },
+        totalRevenue: { $sum: '$totalAmount' },
+        averageOrderValue: { $avg: '$totalAmount' },
+        completedOrders: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+        pendingOrders: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } }
+      }
+    }
+  ]);
+
+  res.json(new ApiResponse(200, 'Order statistics retrieved successfully', {
+    stats: stats[0] || {
+      totalOrders: 0,
+      totalRevenue: 0,
+      averageOrderValue: 0,
+      completedOrders: 0,
+      pendingOrders: 0
+    }
+  }));
+}));
+
+// ========================================
+// SELLER ANALYTICS
+// ========================================
+
+// Get seller analytics
+router.get('/:id/analytics', catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { period = '30d' } = req.query;
+
+  // Calculate date range
+  const now = new Date();
+  let startDate;
+
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  // Get product analytics
+  const productStats = await Product.aggregate([
+    { $match: { sellerId: id, createdAt: { $gte: startDate } } },
+    {
+      $group: {
+        _id: null,
+        totalProducts: { $sum: 1 },
+        totalViews: { $sum: '$viewCount' },
+        averageRating: { $avg: '$rating' }
+      }
+    }
+  ]);
+
+  // Get order analytics
+  const orderStats = await Order.aggregate([
+    {
+      $match: {
+        'items.sellerId': id,
+        createdAt: { $gte: startDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalOrders: { $sum: 1 },
+        totalRevenue: { $sum: '$totalAmount' },
+        averageOrderValue: { $avg: '$totalAmount' }
+      }
+    }
+  ]);
+
+  // Get revenue trend
+  const revenueTrend = await Order.aggregate([
+    {
+      $match: {
+        'items.sellerId': id,
+        createdAt: { $gte: startDate }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+          day: { $dayOfMonth: '$createdAt' }
+        },
+        revenue: { $sum: '$totalAmount' },
+        orders: { $sum: 1 }
+      }
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+  ]);
+
+  res.json(new ApiResponse(200, 'Seller analytics retrieved successfully', {
+    analytics: {
+      period,
+      productStats: productStats[0] || {
+        totalProducts: 0,
+        totalViews: 0,
+        averageRating: 0
+      },
+      orderStats: orderStats[0] || {
+        totalOrders: 0,
+        totalRevenue: 0,
+        averageOrderValue: 0
+      },
+      revenueTrend
+    }
+  }));
+}));
+
+// ========================================
+// SELLER EARNINGS & WITHDRAWALS
+// ========================================
+
+// Get seller earnings
+router.get('/:id/earnings', catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { period = '30d' } = req.query;
+
+  // Calculate date range
+  const now = new Date();
+  let startDate;
+
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  // Calculate earnings from orders
+  const earnings = await Order.aggregate([
+    {
+      $match: {
+        'items.sellerId': id,
+        status: { $in: ['completed', 'delivered'] },
+        createdAt: { $gte: startDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalRevenue: { $sum: '$totalAmount' },
+        platformFee: { $sum: { $multiply: ['$totalAmount', 0.05] } }, // 5% platform fee
+        netEarnings: { $sum: { $multiply: ['$totalAmount', 0.95] } }, // 95% to seller
+        totalOrders: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const earningsData = earnings[0] || {
+    totalRevenue: 0,
+    platformFee: 0,
+    netEarnings: 0,
+    totalOrders: 0
+  };
+
+  res.json(new ApiResponse(200, 'Seller earnings retrieved successfully', {
+    earnings: {
+      period,
+      ...earningsData,
+      pendingWithdrawal: 0, // This would come from withdrawal table
+      totalWithdrawn: 0 // This would come from withdrawal table
+    }
+  }));
+}));
+
+// Request withdrawal
+router.post('/:id/withdraw', [
+  body('amount').isNumeric().withMessage('Valid amount is required'),
+  body('bankAccount').isString().withMessage('Bank account details are required'),
+  body('reason').optional().isString()
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { id } = req.params;
+  const { amount, bankAccount, reason } = req.body;
+
+  // Check if seller exists
+  const seller = await Seller.findById(id);
   if (!seller) {
     throw new ApiError(404, 'Seller not found');
   }
 
-  res.json(new ApiResponse(200, { seller }, 'Seller retrieved'));
+  // Check available balance (this would come from earnings calculation)
+  const availableBalance = 10000; // Mock balance
+  if (amount > availableBalance) {
+    throw new ApiError(400, 'Insufficient balance for withdrawal');
+  }
+
+  // Create withdrawal request
+  const withdrawal = {
+    id: `withdrawal_${Date.now()}`,
+    sellerId: id,
+    amount,
+    bankAccount,
+    reason: reason || 'Withdrawal request',
+    status: 'pending',
+    createdAt: new Date()
+  };
+
+  res.json(new ApiResponse(200, 'Withdrawal request created successfully', {
+    withdrawal
+  }));
 }));
 
-// Update Seller (Admin only - no auth for now)
-router.put('/:id', catchAsync(async (req, res) => {
-  const { verified, SQL_level, isActive } = req.body;
+// ========================================
+// SELLER VERIFICATION
+// ========================================
 
-  const seller = await Seller.findById(req.params.id);
+// Submit verification documents
+router.post('/:id/verification', [
+  body('documents').isArray().withMessage('Documents are required'),
+  body('businessDetails').isObject().withMessage('Business details are required')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { id } = req.params;
+  const { documents, businessDetails } = req.body;
+
+  const seller = await Seller.findById(id);
   if (!seller) {
     throw new ApiError(404, 'Seller not found');
   }
 
-  if (verified !== undefined) seller.verified = verified;
-  if (SQL_level) seller.SQL_level = SQL_level;
-  if (isActive !== undefined) seller.isActive = isActive;
+  // Update verification documents
+  seller.documents = documents;
+  seller.businessDetails = businessDetails;
+  seller.verificationStatus = 'pending';
+  seller.verificationSubmittedAt = new Date();
 
   await seller.save();
 
-  res.json(new ApiResponse(200, { seller }, 'Seller updated successfully'));
+  res.json(new ApiResponse(200, 'Verification documents submitted successfully', {
+    seller: {
+      id: seller._id,
+      verificationStatus: seller.verificationStatus
+    }
+  }));
+}));
+
+// ========================================
+// ADMIN ENDPOINTS
+// ========================================
+
+// Get approval queue (admin only)
+router.get('/approval-queue', catchAsync(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+
+  const sellers = await Seller.find({ status: 'pending' })
+    .populate('userId', 'firstName lastName email')
+    .sort({ createdAt: 1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+
+  const total = await Seller.countDocuments({ status: 'pending' });
+
+  res.json(new ApiResponse(200, 'Approval queue retrieved successfully', {
+    sellers,
+    pagination: {
+      current: parseInt(page),
+      pages: Math.ceil(total / limit),
+      total
+    }
+  }));
+}));
+
+// Approve seller (admin only)
+router.put('/:id/approve', [
+  body('status').isIn(['approved', 'rejected']).withMessage('Valid status is required'),
+  body('reason').optional().isString()
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { id } = req.params;
+  const { status, reason } = req.body;
+
+  const seller = await Seller.findById(id);
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  seller.status = status;
+  seller.verificationStatus = status;
+  seller.approvedAt = status === 'approved' ? new Date() : null;
+  seller.approvalReason = reason;
+
+  await seller.save();
+
+  res.json(new ApiResponse(200, `Seller ${status} successfully`, {
+    seller: {
+      id: seller._id,
+      status: seller.status,
+      verificationStatus: seller.verificationStatus
+    }
+  }));
+}));
+
+// Get top performing sellers
+router.get('/top-performing', catchAsync(async (req, res) => {
+  const { limit = 10, period = '30d' } = req.query;
+
+  // Calculate date range
+  const now = new Date();
+  let startDate;
+
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  const topSellers = await Order.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate },
+        status: { $in: ['completed', 'delivered'] }
+      }
+    },
+    {
+      $unwind: '$items'
+    },
+    {
+      $group: {
+        _id: '$items.sellerId',
+        totalRevenue: { $sum: '$items.price' },
+        totalOrders: { $sum: 1 },
+        averageOrderValue: { $avg: '$items.price' }
+      }
+    },
+    {
+      $sort: { totalRevenue: -1 }
+    },
+    {
+      $limit: parseInt(limit)
+    },
+    {
+      $lookup: {
+        from: 'sellers',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'seller'
+      }
+    },
+    {
+      $unwind: '$seller'
+    }
+  ]);
+
+  res.json(new ApiResponse(200, 'Top performing sellers retrieved successfully', {
+    topSellers,
+    period
+  }));
 }));
 
 module.exports = router;
