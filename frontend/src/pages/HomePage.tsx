@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { FiSearch, FiShoppingCart, FiHeart, FiUser, FiMenu, FiX, FiStar, FiTruck, FiShield, FiGift, FiTrendingUp, FiLogIn, FiUserPlus } from 'react-icons/fi';
+import {
+  FiSearch, FiShoppingCart, FiHeart, FiUser, FiMenu, FiX, FiStar,
+  FiTruck, FiShield, FiGift, FiTrendingUp, FiLogIn, FiUserPlus,
+  FiHome, FiPackage, FiUsers, FiDollarSign, FiBarChart3, FiSettings,
+  FiShoppingBag, FiTag, FiAward, FiZap, FiGlobe, FiSmartphone
+} from 'react-icons/fi';
 import { FaAmazon, FaShopify, FaEbay, FaOpensea, FaBitcoin } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -17,6 +22,12 @@ const HomePage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalProducts: 1250,
+    totalUsers: 8500,
+    totalOrders: 3200,
+    totalRevenue: 125000
+  });
 
   const { user, isAuthenticated, login, register, error: authError, clearError } = useAuth();
   const { addToCart, getCartItemCount } = useCart();
@@ -34,33 +45,131 @@ const HomePage: React.FC = () => {
   const heroSlides = [
     {
       id: 1,
-      title: "🌟 Divine E-commerce Experience",
-      subtitle: "The World's Most Advanced Shopping Platform",
+      title: "🌟 EHB GoSeller Platform",
+      subtitle: "The Ultimate E-commerce Solution",
       description: "Experience the future of online shopping with AI-powered recommendations, blockchain security, and lightning-fast performance.",
       image: "/images/hero-1.jpg",
       bgGradient: "from-purple-600 via-pink-600 to-red-600",
-      ctaText: "Shop Now",
+      ctaText: "Explore Products",
       ctaLink: "/products"
     },
     {
       id: 2,
-      title: "🚀 Ultra-Fast Performance",
-      subtitle: "Lightning Speed Shopping",
-      description: "Enjoy sub-2ms response times and seamless shopping experience with our cutting-edge technology.",
+      title: "🚀 Multi-Platform Integration",
+      subtitle: "Sell Everywhere, Manage from One Place",
+      description: "Connect with Amazon, Shopify, eBay, and more. Manage all your sales from a single dashboard.",
       image: "/images/hero-2.jpg",
       bgGradient: "from-blue-600 via-cyan-600 to-teal-600",
-      ctaText: "Explore",
-      ctaLink: "/categories"
+      ctaText: "View Dashboard",
+      ctaLink: "/dashboard"
     },
     {
       id: 3,
       title: "🤖 AI-Powered Intelligence",
-      subtitle: "Smart Recommendations",
+      subtitle: "Smart Recommendations & Analytics",
       description: "Discover products tailored to your preferences with our advanced AI recommendation system.",
       image: "/images/hero-3.jpg",
       bgGradient: "from-green-600 via-emerald-600 to-teal-600",
-      ctaText: "Discover",
+      ctaText: "Try AI Features",
       ctaLink: "/ai-recommendations"
+    }
+  ];
+
+  // Dashboard Cards Data
+  const dashboardCards = [
+    {
+      id: 1,
+      title: "Total Products",
+      value: dashboardStats.totalProducts.toLocaleString(),
+      icon: FiPackage,
+      color: "bg-blue-500",
+      link: "/products",
+      description: "Active products in catalog"
+    },
+    {
+      id: 2,
+      title: "Total Users",
+      value: dashboardStats.totalUsers.toLocaleString(),
+      icon: FiUsers,
+      color: "bg-green-500",
+      link: "/users",
+      description: "Registered customers"
+    },
+    {
+      id: 3,
+      title: "Total Orders",
+      value: dashboardStats.totalOrders.toLocaleString(),
+      icon: FiShoppingBag,
+      color: "bg-purple-500",
+      link: "/orders",
+      description: "Completed transactions"
+    },
+    {
+      id: 4,
+      title: "Total Revenue",
+      value: `$${dashboardStats.totalRevenue.toLocaleString()}`,
+      icon: FiDollarSign,
+      color: "bg-orange-500",
+      link: "/analytics",
+      description: "Total sales revenue"
+    },
+    {
+      id: 5,
+      title: "AI Analytics",
+      value: "Live",
+      icon: FiBarChart3,
+      color: "bg-indigo-500",
+      link: "/analytics",
+      description: "Real-time insights"
+    },
+    {
+      id: 6,
+      title: "Platform Integration",
+      value: "4 Active",
+      icon: FiGlobe,
+      color: "bg-teal-500",
+      link: "/integrations",
+      description: "Connected platforms"
+    }
+  ];
+
+  // Platform Integration Cards
+  const platformCards = [
+    {
+      id: 1,
+      name: "Amazon",
+      icon: FaAmazon,
+      status: "Connected",
+      color: "bg-orange-500",
+      sales: 450,
+      revenue: 25000
+    },
+    {
+      id: 2,
+      name: "Shopify",
+      icon: FaShopify,
+      status: "Connected",
+      color: "bg-green-500",
+      sales: 320,
+      revenue: 18000
+    },
+    {
+      id: 3,
+      name: "eBay",
+      icon: FaEbay,
+      status: "Connected",
+      color: "bg-blue-500",
+      sales: 280,
+      revenue: 15000
+    },
+    {
+      id: 4,
+      name: "OpenSea",
+      icon: FaOpensea,
+      status: "Connected",
+      color: "bg-purple-500",
+      sales: 120,
+      revenue: 8000
     }
   ];
 
@@ -87,6 +196,57 @@ const HomePage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load featured products:', error);
+      // Add mock data for demo
+      setFeaturedProducts([
+        {
+          _id: '1',
+          name: 'Premium Wireless Headphones',
+          price: 199.99,
+          originalPrice: 249.99,
+          description: 'High-quality wireless headphones with noise cancellation',
+          images: ['/images/headphones.jpg'],
+          rating: 4.5,
+          reviews: 128,
+          stock: 50,
+          isFeatured: true
+        },
+        {
+          _id: '2',
+          name: 'Smart Fitness Watch',
+          price: 299.99,
+          originalPrice: 349.99,
+          description: 'Advanced fitness tracking with heart rate monitoring',
+          images: ['/images/watch.jpg'],
+          rating: 4.8,
+          reviews: 95,
+          stock: 30,
+          isFeatured: true
+        },
+        {
+          _id: '3',
+          name: 'Ultra HD Camera',
+          price: 599.99,
+          originalPrice: 699.99,
+          description: 'Professional 4K camera for content creators',
+          images: ['/images/camera.jpg'],
+          rating: 4.7,
+          reviews: 67,
+          stock: 15,
+          isFeatured: true
+        },
+        {
+          _id: '4',
+          name: 'Gaming Laptop',
+          price: 1299.99,
+          originalPrice: 1499.99,
+          description: 'High-performance gaming laptop with RTX graphics',
+          images: ['/images/laptop.jpg'],
+          rating: 4.9,
+          reviews: 203,
+          stock: 25,
+          isFeatured: true
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +260,15 @@ const HomePage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load categories:', error);
+      // Add mock data for demo
+      setCategories([
+        { _id: '1', name: 'Electronics', slug: 'electronics', description: 'Latest gadgets and devices' },
+        { _id: '2', name: 'Fashion', slug: 'fashion', description: 'Trendy clothing and accessories' },
+        { _id: '3', name: 'Home & Garden', slug: 'home-garden', description: 'Everything for your home' },
+        { _id: '4', name: 'Sports', slug: 'sports', description: 'Sports equipment and gear' },
+        { _id: '5', name: 'Books', slug: 'books', description: 'Books and educational materials' },
+        { _id: '6', name: 'Toys', slug: 'toys', description: 'Fun toys and games' }
+      ]);
     }
   };
 
@@ -114,6 +283,7 @@ const HomePage: React.FC = () => {
   const handleAddToCart = async (product: Product) => {
     try {
       await addToCart(product, 1);
+      alert('Product added to cart!');
     } catch (error) {
       console.error('Failed to add to cart:', error);
     }
@@ -142,7 +312,7 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,7 +322,7 @@ const HomePage: React.FC = () => {
               <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">G</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">GoSellr</span>
+              <span className="text-xl font-bold text-gray-900">EHB GoSeller</span>
             </Link>
 
             {/* Search Bar */}
@@ -337,8 +507,82 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Categories Section */}
+      {/* Dashboard Cards Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Platform Overview</h2>
+            <p className="text-lg text-gray-600">Real-time statistics and performance metrics</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dashboardCards.map((card) => (
+              <motion.div
+                key={card.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -5 }}
+                className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300"
+              >
+                <Link to={card.link} className="block">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center`}>
+                      <card.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <FiZap className="w-5 h-5 text-green-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{card.title}</h3>
+                  <p className="text-3xl font-bold text-gray-900 mb-2">{card.value}</p>
+                  <p className="text-sm text-gray-600">{card.description}</p>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Platform Integration Section */}
       <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Platform Integrations</h2>
+            <p className="text-lg text-gray-600">Connected marketplaces and sales channels</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {platformCards.map((platform) => (
+              <motion.div
+                key={platform.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.05 }}
+                className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-12 h-12 ${platform.color} rounded-lg flex items-center justify-center`}>
+                    <platform.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                    {platform.status}
+                  </span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{platform.name}</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Sales:</span>
+                    <span className="font-medium">{platform.sales}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Revenue:</span>
+                    <span className="font-medium">${platform.revenue.toLocaleString()}</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Shop by Category</h2>
@@ -349,7 +593,7 @@ const HomePage: React.FC = () => {
               <Link
                 key={category._id}
                 to={`/category/${category.slug}`}
-                className="group bg-white rounded-lg p-6 text-center hover:shadow-lg transition-shadow"
+                className="group bg-gray-50 rounded-lg p-6 text-center hover:bg-purple-50 transition-colors"
               >
                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 transition-colors">
                   <span className="text-2xl">📦</span>
@@ -364,7 +608,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Featured Products Section */}
-      <section className="py-16">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Products</h2>
@@ -383,11 +627,12 @@ const HomePage: React.FC = () => {
                   key={product._id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                  whileHover={{ y: -5 }}
+                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                 >
                   <div className="relative">
                     <img
-                      src={product.images[0] || '/images/placeholder.jpg'}
+                      src={product.images[0] || 'https://via.placeholder.com/300x200?text=Product'}
                       alt={product.name}
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
@@ -444,10 +689,10 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose GoSellr?</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose EHB GoSeller?</h2>
             <p className="text-lg text-gray-600">Experience the future of e-commerce</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

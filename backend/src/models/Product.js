@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
-const slugify = require('slugify');
+
+// Simple slug generation function
+const generateSlug = (text) => {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+};
 
 const productSchema = new mongoose.Schema({
   // Basic Information
@@ -340,11 +347,7 @@ productSchema.virtual('lowStock').get(function() {
 // Pre-save middleware to generate slug
 productSchema.pre('save', function(next) {
   if (this.isModified('name')) {
-    this.slug = slugify(this.name, {
-      lower: true,
-      strict: true,
-      remove: /[*+~.()'"!:@]/g
-    });
+    this.slug = generateSlug(this.name);
   }
   next();
 });

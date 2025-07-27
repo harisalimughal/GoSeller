@@ -5,7 +5,7 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const ApiError = require('../utils/ApiError');
-const catchAsync = require('../utils/catchAsync');
+const { catchAsync } = require('../utils/catchAsync');
 
 // Initialize OpenAI
 const openai = new OpenAI({

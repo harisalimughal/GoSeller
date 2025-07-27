@@ -23,10 +23,11 @@ const searchRoutes = require('./routes/search');
 const aiRoutes = require('./routes/ai');
 const blockchainRoutes = require('./routes/blockchain');
 const analyticsRoutes = require('./routes/analytics');
+const deliveryRoutes = require('./routes/delivery');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
-const { authMiddleware } = require('./middleware/auth');
+const { protect } = require('./middleware/auth');
 const { validateRequest } = require('./middleware/validation');
 
 // Create Express app
@@ -50,7 +51,7 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:4000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -100,14 +101,15 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
-app.use('/api/users', authMiddleware, userRoutes);
-app.use('/api/orders', authMiddleware, orderRoutes);
-app.use('/api/cart', authMiddleware, cartRoutes);
+app.use('/api/users', protect, userRoutes);
+app.use('/api/orders', protect, orderRoutes);
+app.use('/api/cart', protect, cartRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/delivery', protect, deliveryRoutes);
 
 // API Documentation
 app.get('/api', (req, res) => {
@@ -126,7 +128,8 @@ app.get('/api', (req, res) => {
       search: '/api/search',
       ai: '/api/ai',
       blockchain: '/api/blockchain',
-      analytics: '/api/analytics'
+      analytics: '/api/analytics',
+      delivery: '/api/delivery'
     },
     documentation: '/api/docs',
     health: '/health'
@@ -149,7 +152,8 @@ app.use('*', (req, res) => {
       '/api/search',
       '/api/ai',
       '/api/blockchain',
-      '/api/analytics'
+      '/api/analytics',
+      '/api/delivery'
     ]
   });
 });
@@ -208,7 +212,7 @@ process.on('SIGTERM', async () => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const startServer = async () => {
   try {
     await connectDB();

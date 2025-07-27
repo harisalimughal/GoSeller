@@ -3,7 +3,7 @@ const ethers = require('ethers');
 const crypto = require('crypto');
 const Order = require('../models/Order');
 const ApiError = require('../utils/ApiError');
-const catchAsync = require('../utils/catchAsync');
+const { catchAsync } = require('../utils/catchAsync');
 
 class BlockchainService {
   constructor() {

@@ -1,15 +1,10 @@
-Write-Host "🚀 Opening Goseller in your browser..." -ForegroundColor Green
-Write-Host ""
-Write-Host "🏪 Goseller URL: http://localhost:8080" -ForegroundColor Cyan
-Write-Host "📱 Frontend: http://localhost:3000" -ForegroundColor Cyan
-Write-Host "🔧 Backend API: http://localhost:3001" -ForegroundColor Cyan
-Write-Host "⚙️ Admin Panel: http://localhost:3002" -ForegroundColor Cyan
-Write-Host ""
+Write-Host "Opening EHB GoSeller Platform..." -ForegroundColor Green
 
-Start-Sleep -Seconds 3
+# Open all GoSeller URLs
+Start-Process "http://localhost:4000"
+Start-Sleep -Seconds 2
+Start-Process "http://localhost:4001"
+Start-Sleep -Seconds 2
+Start-Process "http://localhost:5001"
 
-Start-Process "http://localhost:8080"
-
-Write-Host "✅ Goseller opened in your browser!" -ForegroundColor Green
-Write-Host ""
-Read-Host "Press Enter to continue"
+Write-Host "GoSeller Platform opened in browser!" -ForegroundColor Green

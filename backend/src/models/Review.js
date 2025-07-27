@@ -1,577 +1,281 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-const reviewSchema = new Schema({
-  product: {
-    type: Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
-  },
-  customer: {
-    type: Schema.Types.ObjectId,
+const reviewSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  order: {
-    type: Schema.Types.ObjectId,
-    ref: 'Order'
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true
   },
   rating: {
-    overall: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5
-    },
-    quality: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    value: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    delivery: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    customerService: {
-      type: Number,
-      min: 1,
-      max: 5
-    }
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5
   },
   title: {
     type: String,
-    required: true,
-    trim: true,
-    maxlength: 200
-  },
-  content: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 2000
-  },
-  pros: [{
-    type: String,
     trim: true,
     maxlength: 100
-  }],
-  cons: [{
+  },
+  comment: {
     type: String,
     trim: true,
-    maxlength: 100
-  }],
-  images: [{
-    url: {
-      type: String,
-      required: true
-    },
-    alt: String,
-    caption: String,
-    thumbnail: String
-  }],
-  videos: [{
-    url: {
-      type: String,
-      required: true
-    },
-    thumbnail: String,
-    duration: Number,
-    platform: {
-      type: String,
-      enum: ['youtube', 'vimeo', 'direct']
-    }
-  }],
-  verified: {
+    maxlength: 1000
+  },
+  isActive: {
     type: Boolean,
-    default: false
+    default: true
   },
-  verifiedPurchase: {
-    type: Boolean,
-    default: false
-  },
-  helpful: {
-    count: {
-      type: Number,
-      default: 0
-    },
-    users: [{
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    }]
-  },
-  unhelpful: {
-    count: {
-      type: Number,
-      default: 0
-    },
-    users: [{
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    }]
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected', 'spam', 'hidden'],
-    default: 'pending'
-  },
-  moderation: {
-    reviewedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    reviewedAt: Date,
-    reason: String,
-    notes: String
-  },
-  sentiment: {
-    score: {
-      type: Number,
-      min: -1,
-      max: 1
-    },
-    label: {
-      type: String,
-      enum: ['positive', 'neutral', 'negative']
-    },
-    confidence: {
-      type: Number,
-      min: 0,
-      max: 1
-    }
-  },
-  language: {
-    type: String,
-    default: 'en'
-  },
-  location: {
-    country: String,
-    region: String,
-    city: String
-  },
-  device: {
-    type: String,
-    enum: ['desktop', 'mobile', 'tablet', 'app']
-  },
-  source: {
-    type: String,
-    enum: ['web', 'mobile', 'email', 'admin', 'api'],
-    default: 'web'
-  },
-  tags: [String],
-  metadata: {
-    userAgent: String,
-    ipAddress: String,
-    referrer: String,
-    utmSource: String,
-    utmMedium: String,
-    utmCampaign: String
-  },
-  replies: [{
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    content: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 1000
-    },
-    isSeller: {
-      type: Boolean,
-      default: false
-    },
-    isAdmin: {
-      type: Boolean,
-      default: false
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
-    },
-    updatedAt: Date
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }],
-  flags: [{
+  reports: [{
     user: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
     },
     reason: {
       type: String,
-      enum: ['inappropriate', 'spam', 'fake', 'offensive', 'other'],
-      required: true
+      required: true,
+      trim: true
     },
-    description: String,
-    createdAt: {
+    reportedAt: {
       type: Date,
       default: Date.now
-    },
-    reviewed: {
-      type: Boolean,
-      default: false
-    },
-    reviewedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    reviewedAt: Date,
-    action: {
-      type: String,
-      enum: ['dismissed', 'hidden', 'removed']
     }
   }],
-  analytics: {
-    views: {
+  helpful: {
+    yes: {
       type: Number,
       default: 0
     },
-    shares: {
-      type: Number,
-      default: 0
-    },
-    clicks: {
+    no: {
       type: Number,
       default: 0
     }
   },
-  featured: {
-    type: Boolean,
-    default: false
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  featuredAt: Date,
-  featuredBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  publishedAt: Date,
-  editedAt: Date,
-  editedBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  editHistory: [{
-    content: String,
-    editedAt: {
-      type: Date,
-      default: Date.now
-    },
-    editedBy: {
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    reason: String
-  }]
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-// Indexes for performance
-reviewSchema.index({ product: 1, status: 1 });
-reviewSchema.index({ customer: 1 });
-reviewSchema.index({ 'rating.overall': -1 });
+// Indexes
+reviewSchema.index({ user: 1, product: 1 }, { unique: true });
+reviewSchema.index({ product: 1, isActive: 1 });
+reviewSchema.index({ rating: 1 });
 reviewSchema.index({ createdAt: -1 });
-reviewSchema.index({ verified: 1 });
-reviewSchema.index({ featured: 1 });
-reviewSchema.index({ 'sentiment.label': 1 });
-reviewSchema.index({ status: 1, createdAt: -1 });
+reviewSchema.index({ 'reports.user': 1 });
 
-// Compound indexes
-reviewSchema.index({ product: 1, 'rating.overall': -1 });
-reviewSchema.index({ product: 1, verified: 1, 'rating.overall': -1 });
-reviewSchema.index({ product: 1, status: 1, createdAt: -1 });
-
-// Virtual for average rating
-reviewSchema.virtual('averageRating').get(function() {
-  const ratings = [
-    this.rating.overall,
-    this.rating.quality,
-    this.rating.value,
-    this.rating.delivery,
-    this.rating.customerService
-  ].filter(r => r !== undefined);
-
-  return ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+// Virtual for helpful percentage
+reviewSchema.virtual('helpfulPercentage').get(function() {
+  const total = this.helpful.yes + this.helpful.no;
+  if (total === 0) return 0;
+  return Math.round((this.helpful.yes / total) * 100);
 });
 
-// Virtual for helpful score
-reviewSchema.virtual('helpfulScore').get(function() {
-  const total = this.helpful.count + this.unhelpful.count;
-  return total > 0 ? this.helpful.count / total : 0;
+// Virtual for like count
+reviewSchema.virtual('likeCount').get(function() {
+  return this.likes.length;
 });
 
-// Virtual for review age
-reviewSchema.virtual('age').get(function() {
-  return Math.floor((Date.now() - this.createdAt) / (1000 * 60 * 60 * 24));
-});
-
-// Virtual for is verified purchase
-reviewSchema.virtual('isVerifiedPurchase').get(function() {
-  return this.verifiedPurchase && this.order;
+// Virtual for report count
+reviewSchema.virtual('reportCount').get(function() {
+  return this.reports.length;
 });
 
 // Pre-save middleware
 reviewSchema.pre('save', function(next) {
-  // Set publishedAt on first save
-  if (this.isNew && this.status === 'approved') {
-    this.publishedAt = new Date();
-  }
-
-  // Update editedAt when content changes
-  if (this.isModified('content') || this.isModified('title') || this.isModified('rating')) {
-    this.editedAt = new Date();
-  }
-
-  // Auto-approve verified purchases
-  if (this.verifiedPurchase && this.status === 'pending') {
-    this.status = 'approved';
-    this.verified = true;
-  }
-
+  this.updatedAt = new Date();
   next();
 });
 
-// Pre-save middleware to update product rating
-reviewSchema.pre('save', async function(next) {
-  if (this.isModified('rating.overall') || this.isModified('status')) {
-    await this.updateProductRating();
+// Instance method to add like
+reviewSchema.methods.addLike = function(userId) {
+  if (!this.likes.includes(userId)) {
+    this.likes.push(userId);
+    return this.save();
   }
-  next();
-});
-
-// Instance method to update product rating
-reviewSchema.methods.updateProductRating = async function() {
-  const Product = mongoose.model('Product');
-
-  if (this.status === 'approved') {
-    const reviews = await this.constructor.find({
-      product: this.product,
-      status: 'approved'
-    });
-
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating.overall, 0);
-    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
-
-    await Product.findByIdAndUpdate(this.product, {
-      'rating.average': averageRating,
-      'rating.count': reviews.length,
-      'rating.distribution': this.calculateRatingDistribution(reviews)
-    });
-  }
+  return Promise.resolve(this);
 };
 
-// Instance method to calculate rating distribution
-reviewSchema.methods.calculateRatingDistribution = function(reviews) {
-  const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+// Instance method to remove like
+reviewSchema.methods.removeLike = function(userId) {
+  const index = this.likes.indexOf(userId);
+  if (index > -1) {
+    this.likes.splice(index, 1);
+    return this.save();
+  }
+  return Promise.resolve(this);
+};
 
-  reviews.forEach(review => {
-    const rating = Math.round(review.rating.overall);
-    if (distribution[rating] !== undefined) {
-      distribution[rating]++;
-    }
-  });
+// Instance method to toggle like
+reviewSchema.methods.toggleLike = function(userId) {
+  const index = this.likes.indexOf(userId);
+  if (index > -1) {
+    this.likes.splice(index, 1);
+  } else {
+    this.likes.push(userId);
+  }
+  return this.save();
+};
 
-  return distribution;
+// Instance method to add report
+reviewSchema.methods.addReport = function(userId, reason) {
+  const existingReport = this.reports.find(
+    report => report.user.toString() === userId.toString()
+  );
+
+  if (!existingReport) {
+    this.reports.push({
+      user: userId,
+      reason,
+      reportedAt: new Date()
+    });
+    return this.save();
+  }
+  return Promise.resolve(this);
 };
 
 // Instance method to mark as helpful
-reviewSchema.methods.markHelpful = function(userId) {
-  if (!this.helpful.users.includes(userId)) {
-    this.helpful.users.push(userId);
-    this.helpful.count++;
-
-    // Remove from unhelpful if user had marked it unhelpful
-    const unhelpfulIndex = this.unhelpful.users.indexOf(userId);
-    if (unhelpfulIndex > -1) {
-      this.unhelpful.users.splice(unhelpfulIndex, 1);
-      this.unhelpful.count--;
-    }
+reviewSchema.methods.markHelpful = function(isHelpful) {
+  if (isHelpful) {
+    this.helpful.yes += 1;
+  } else {
+    this.helpful.no += 1;
   }
-  return this;
-};
-
-// Instance method to mark as unhelpful
-reviewSchema.methods.markUnhelpful = function(userId) {
-  if (!this.unhelpful.users.includes(userId)) {
-    this.unhelpful.users.push(userId);
-    this.unhelpful.count++;
-
-    // Remove from helpful if user had marked it helpful
-    const helpfulIndex = this.helpful.users.indexOf(userId);
-    if (helpfulIndex > -1) {
-      this.helpful.users.splice(helpfulIndex, 1);
-      this.helpful.count--;
-    }
-  }
-  return this;
-};
-
-// Instance method to add reply
-reviewSchema.methods.addReply = function(userId, content, isSeller = false, isAdmin = false) {
-  this.replies.push({
-    user: userId,
-    content,
-    isSeller,
-    isAdmin,
-    createdAt: new Date()
-  });
-  return this;
-};
-
-// Instance method to flag review
-reviewSchema.methods.flagReview = function(userId, reason, description = '') {
-  // Check if user already flagged
-  const existingFlag = this.flags.find(flag => flag.user.toString() === userId.toString());
-  if (existingFlag) {
-    throw new Error('User has already flagged this review');
-  }
-
-  this.flags.push({
-    user: userId,
-    reason,
-    description,
-    createdAt: new Date()
-  });
-  return this;
+  return this.save();
 };
 
 // Static method to get reviews by product
-reviewSchema.statics.getByProduct = function(productId, options = {}) {
-  const {
-    status = 'approved',
-    sort = { createdAt: -1 },
-    limit = 10,
-    skip = 0,
-    rating = null,
-    verified = null
-  } = options;
+reviewSchema.statics.findByProduct = function(productId, options = {}) {
+  const { page = 1, limit = 10, rating, sort = 'newest' } = options;
 
-  let query = { product: productId, status };
+  const query = { product: productId, isActive: true };
 
   if (rating) {
-    query['rating.overall'] = rating;
+    query.rating = parseInt(rating);
   }
 
-  if (verified !== null) {
-    query.verified = verified;
+  let sortOption = {};
+  switch (sort) {
+    case 'newest':
+      sortOption = { createdAt: -1 };
+      break;
+    case 'oldest':
+      sortOption = { createdAt: 1 };
+      break;
+    case 'highest':
+      sortOption = { rating: -1 };
+      break;
+    case 'lowest':
+      sortOption = { rating: 1 };
+      break;
+    case 'helpful':
+      sortOption = { 'helpful.yes': -1 };
+      break;
+    default:
+      sortOption = { createdAt: -1 };
   }
 
   return this.find(query)
-    .populate('customer', 'firstName lastName avatar')
-    .populate('replies.user', 'firstName lastName avatar')
-    .sort(sort)
-    .skip(skip)
-    .limit(limit);
+    .populate('user', 'firstName lastName profile.avatar')
+    .sort(sortOption)
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
 };
 
-// Static method to get reviews by customer
-reviewSchema.statics.getByCustomer = function(customerId, options = {}) {
-  const {
-    status = 'approved',
-    sort = { createdAt: -1 },
-    limit = 10,
-    skip = 0
-  } = options;
+// Static method to get user reviews
+reviewSchema.statics.findByUser = function(userId, options = {}) {
+  const { page = 1, limit = 10 } = options;
 
-  return this.find({ customer: customerId, status })
+  return this.find({ user: userId })
     .populate('product', 'name images price')
-    .sort(sort)
-    .skip(skip)
-    .limit(limit);
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
 };
 
 // Static method to get review statistics
-reviewSchema.statics.getStats = async function(filters = {}) {
-  const pipeline = [
-    { $match: { ...filters, status: 'approved' } },
+reviewSchema.statics.getStats = function(productId) {
+  return this.aggregate([
+    { $match: { product: productId, isActive: true } },
     {
       $group: {
         _id: null,
+        averageRating: { $avg: '$rating' },
         totalReviews: { $sum: 1 },
-        averageRating: { $avg: '$rating.overall' },
-        verifiedReviews: {
-          $sum: { $cond: ['$verifiedPurchase', 1, 0] }
-        },
-        totalHelpful: { $sum: '$helpful.count' },
-        totalUnhelpful: { $sum: '$unhelpful.count' },
         ratingDistribution: {
-          $push: '$rating.overall'
+          $push: '$rating'
         }
       }
     }
-  ];
+  ]);
+};
 
-  const result = await this.aggregate(pipeline);
-  const stats = result[0] || {
-    totalReviews: 0,
-    averageRating: 0,
-    verifiedReviews: 0,
-    totalHelpful: 0,
-    totalUnhelpful: 0,
-    ratingDistribution: []
-  };
-
-  // Calculate rating distribution
-  const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  stats.ratingDistribution.forEach(rating => {
-    const roundedRating = Math.round(rating);
-    if (distribution[roundedRating] !== undefined) {
-      distribution[roundedRating]++;
+// Static method to update product rating
+reviewSchema.statics.updateProductRating = async function(productId) {
+  const stats = await this.aggregate([
+    { $match: { product: productId, isActive: true } },
+    {
+      $group: {
+        _id: null,
+        averageRating: { $avg: '$rating' },
+        totalReviews: { $sum: 1 }
+      }
     }
-  });
+  ]);
 
-  stats.ratingDistribution = distribution;
-  delete stats._id;
-
-  return stats;
+  if (stats.length > 0) {
+    await mongoose.model('Product').findByIdAndUpdate(productId, {
+      rating: Math.round(stats[0].averageRating * 10) / 10,
+      reviewCount: stats[0].totalReviews
+    });
+  }
 };
 
-// Static method to get featured reviews
-reviewSchema.statics.getFeatured = function(limit = 5) {
+// Static method to get top reviews
+reviewSchema.statics.getTopReviews = function(limit = 10) {
+  return this.find({ isActive: true })
+    .populate('user', 'firstName lastName profile.avatar')
+    .populate('product', 'name images price')
+    .sort({ 'helpful.yes': -1, rating: -1 })
+    .limit(limit);
+};
+
+// Static method to get recent reviews
+reviewSchema.statics.getRecentReviews = function(limit = 10) {
+  return this.find({ isActive: true })
+    .populate('user', 'firstName lastName profile.avatar')
+    .populate('product', 'name images price')
+    .sort({ createdAt: -1 })
+    .limit(limit);
+};
+
+// Static method to get reported reviews
+reviewSchema.statics.getReportedReviews = function(limit = 20) {
   return this.find({
-    featured: true,
-    status: 'approved'
+    'reports.0': { $exists: true }
   })
-  .populate('product', 'name images price')
-  .populate('customer', 'firstName lastName avatar')
-  .sort({ featuredAt: -1 })
-  .limit(limit);
-};
-
-// Static method to search reviews
-reviewSchema.statics.search = function(query, options = {}) {
-  const { limit = 10, skip = 0, sort = { createdAt: -1 } } = options;
-
-  return this.find({
-    $or: [
-      { title: { $regex: query, $options: 'i' } },
-      { content: { $regex: query, $options: 'i' } },
-      { tags: { $in: [new RegExp(query, 'i')] } }
-    ],
-    status: 'approved'
-  })
-  .populate('product', 'name images price')
-  .populate('customer', 'firstName lastName avatar')
-  .sort(sort)
-  .skip(skip)
-  .limit(limit);
-};
-
-// Static method to get reviews needing moderation
-reviewSchema.statics.getPendingModeration = function(limit = 20) {
-  return this.find({ status: 'pending' })
+    .populate('user', 'firstName lastName')
     .populate('product', 'name')
-    .populate('customer', 'firstName lastName email')
-    .sort({ createdAt: 1 })
+    .populate('reports.user', 'firstName lastName')
+    .sort({ 'reports.0.reportedAt': -1 })
     .limit(limit);
 };
 
