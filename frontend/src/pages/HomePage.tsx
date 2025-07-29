@@ -4,10 +4,12 @@ import { Link } from 'react-router-dom';
 import {
   FiSearch, FiShoppingCart, FiHeart, FiUser, FiMenu, FiX, FiStar,
   FiTruck, FiShield, FiGift, FiTrendingUp, FiLogIn, FiUserPlus,
-  FiHome, FiPackage, FiUsers, FiDollarSign, FiBarChart3, FiSettings,
-  FiShoppingBag, FiTag, FiAward, FiZap, FiGlobe, FiSmartphone
+  FiHome, FiPackage, FiUsers, FiDollarSign, FiBarChart, FiSettings,
+  FiShoppingBag, FiTag, FiAward, FiZap, FiGlobe, FiSmartphone,
+  FiMapPin, FiChevronDown, FiChevronRight, FiGrid, FiList
 } from 'react-icons/fi';
-import { FaAmazon, FaShopify, FaEbay, FaOpensea, FaBitcoin } from 'react-icons/fa';
+import { FaAmazon, FaShopify, FaEbay, FaBitcoin } from 'react-icons/fa';
+import { SiOpensea } from 'react-icons/si';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import apiService from '../services/api';
@@ -16,18 +18,11 @@ import { Product, Category } from '../services/api';
 const HomePage: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [dashboardStats, setDashboardStats] = useState({
-    totalProducts: 1250,
-    totalUsers: 8500,
-    totalOrders: 3200,
-    totalRevenue: 125000
-  });
 
   const { user, isAuthenticated, login, register, error: authError, clearError } = useAuth();
   const { addToCart, getCartItemCount } = useCart();
@@ -41,216 +36,171 @@ const HomePage: React.FC = () => {
     lastName: '',
   });
 
-  // Hero carousel data
-  const heroSlides = [
-    {
-      id: 1,
-      title: "🌟 EHB GoSeller Platform",
-      subtitle: "The Ultimate E-commerce Solution",
-      description: "Experience the future of online shopping with AI-powered recommendations, blockchain security, and lightning-fast performance.",
-      image: "/images/hero-1.jpg",
-      bgGradient: "from-purple-600 via-pink-600 to-red-600",
-      ctaText: "Explore Products",
-      ctaLink: "/products"
+  // GoSeller categories with best sellers
+  const gosellerCategories = [
+    { 
+      id: '1', 
+      name: 'Electronics', 
+      icon: '📱', 
+      color: 'bg-blue-500',
+      slug: 'electronics',
+      bestSellers: [
+        { _id: '1', name: 'Wireless Bluetooth Headphones', price: 89.99, originalPrice: 129.99, rating: 4.5, reviews: 1247, stock: 50, images: ['https://via.placeholder.com/300x200?text=Headphones'], category: 'Electronics', isBestSeller: true },
+        { _id: '2', name: 'Smartphone 128GB', price: 599.99, originalPrice: 699.99, rating: 4.8, reviews: 892, stock: 25, images: ['https://via.placeholder.com/300x200?text=Smartphone'], category: 'Electronics', isBestSeller: true },
+        { _id: '3', name: '4K Smart TV 55"', price: 449.99, originalPrice: 599.99, rating: 4.6, reviews: 567, stock: 15, images: ['https://via.placeholder.com/300x200?text=TV'], category: 'Electronics', isBestSeller: true },
+        { _id: '4', name: 'Laptop 15.6" 8GB RAM', price: 799.99, originalPrice: 999.99, rating: 4.7, reviews: 423, stock: 30, images: ['https://via.placeholder.com/300x200?text=Laptop'], category: 'Electronics', isBestSeller: true },
+      ]
     },
-    {
-      id: 2,
-      title: "🚀 Multi-Platform Integration",
-      subtitle: "Sell Everywhere, Manage from One Place",
-      description: "Connect with Amazon, Shopify, eBay, and more. Manage all your sales from a single dashboard.",
-      image: "/images/hero-2.jpg",
-      bgGradient: "from-blue-600 via-cyan-600 to-teal-600",
-      ctaText: "View Dashboard",
-      ctaLink: "/dashboard"
+    { 
+      id: '2', 
+      name: 'Fashion', 
+      icon: '👕', 
+      color: 'bg-pink-500',
+      slug: 'fashion',
+      bestSellers: [
+        { _id: '5', name: 'Men\'s Casual T-Shirt', price: 24.99, originalPrice: 34.99, rating: 4.3, reviews: 156, stock: 100, images: ['https://via.placeholder.com/300x200?text=T-Shirt'], category: 'Fashion', isBestSeller: true },
+        { _id: '6', name: 'Women\'s Summer Dress', price: 49.99, originalPrice: 69.99, rating: 4.4, reviews: 234, stock: 75, images: ['https://via.placeholder.com/300x200?text=Dress'], category: 'Fashion', isBestSeller: true },
+        { _id: '7', name: 'Running Shoes', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 60, images: ['https://via.placeholder.com/300x200?text=Shoes'], category: 'Fashion', isBestSeller: true },
+        { _id: '8', name: 'Denim Jeans', price: 59.99, originalPrice: 79.99, rating: 4.2, reviews: 98, stock: 80, images: ['https://via.placeholder.com/300x200?text=Jeans'], category: 'Fashion', isBestSeller: true },
+      ]
     },
-    {
-      id: 3,
-      title: "🤖 AI-Powered Intelligence",
-      subtitle: "Smart Recommendations & Analytics",
-      description: "Discover products tailored to your preferences with our advanced AI recommendation system.",
-      image: "/images/hero-3.jpg",
-      bgGradient: "from-green-600 via-emerald-600 to-teal-600",
-      ctaText: "Try AI Features",
-      ctaLink: "/ai-recommendations"
-    }
-  ];
-
-  // Dashboard Cards Data
-  const dashboardCards = [
-    {
-      id: 1,
-      title: "Total Products",
-      value: dashboardStats.totalProducts.toLocaleString(),
-      icon: FiPackage,
-      color: "bg-blue-500",
-      link: "/products",
-      description: "Active products in catalog"
+    { 
+      id: '3', 
+      name: 'Home & Kitchen', 
+      icon: '🏠', 
+      color: 'bg-green-500',
+      slug: 'home-kitchen',
+      bestSellers: [
+        { _id: '9', name: 'Coffee Maker', price: 89.99, originalPrice: 119.99, rating: 4.5, reviews: 312, stock: 40, images: ['https://via.placeholder.com/300x200?text=Coffee+Maker'], category: 'Home & Kitchen', isBestSeller: true },
+        { _id: '10', name: 'Kitchen Knife Set', price: 69.99, originalPrice: 89.99, rating: 4.7, reviews: 156, stock: 55, images: ['https://via.placeholder.com/300x200?text=Knife+Set'], category: 'Home & Kitchen', isBestSeller: true },
+        { _id: '11', name: 'Blender 1000W', price: 49.99, originalPrice: 69.99, rating: 4.3, reviews: 234, stock: 70, images: ['https://via.placeholder.com/300x200?text=Blender'], category: 'Home & Kitchen', isBestSeller: true },
+        { _id: '12', name: 'Bedding Set Queen', price: 79.99, originalPrice: 99.99, rating: 4.4, reviews: 189, stock: 45, images: ['https://via.placeholder.com/300x200?text=Bedding'], category: 'Home & Kitchen', isBestSeller: true },
+      ]
     },
-    {
-      id: 2,
-      title: "Total Users",
-      value: dashboardStats.totalUsers.toLocaleString(),
-      icon: FiUsers,
-      color: "bg-green-500",
-      link: "/users",
-      description: "Registered customers"
+    { 
+      id: '4', 
+      name: 'Sports & Outdoors', 
+      icon: '⚽', 
+      color: 'bg-orange-500',
+      slug: 'sports-outdoors',
+      bestSellers: [
+        { _id: '13', name: 'Yoga Mat Premium', price: 29.99, originalPrice: 39.99, rating: 4.6, reviews: 445, stock: 120, images: ['https://via.placeholder.com/300x200?text=Yoga+Mat'], category: 'Sports & Outdoors', isBestSeller: true },
+        { _id: '14', name: 'Basketball Official Size', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 90, images: ['https://via.placeholder.com/300x200?text=Basketball'], category: 'Sports & Outdoors', isBestSeller: true },
+        { _id: '15', name: 'Tennis Racket Pro', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 156, stock: 35, images: ['https://via.placeholder.com/300x200?text=Tennis+Racket'], category: 'Sports & Outdoors', isBestSeller: true },
+        { _id: '16', name: 'Camping Tent 4-Person', price: 149.99, originalPrice: 199.99, rating: 4.4, reviews: 98, stock: 25, images: ['https://via.placeholder.com/300x200?text=Tent'], category: 'Sports & Outdoors', isBestSeller: true },
+      ]
     },
-    {
-      id: 3,
-      title: "Total Orders",
-      value: dashboardStats.totalOrders.toLocaleString(),
-      icon: FiShoppingBag,
-      color: "bg-purple-500",
-      link: "/orders",
-      description: "Completed transactions"
+    { 
+      id: '5', 
+      name: 'Books', 
+      icon: '📚', 
+      color: 'bg-purple-500',
+      slug: 'books',
+      bestSellers: [
+        { _id: '17', name: 'The Great Gatsby', price: 12.99, originalPrice: 16.99, rating: 4.8, reviews: 1234, stock: 200, images: ['https://via.placeholder.com/300x200?text=Book'], category: 'Books', isBestSeller: true },
+        { _id: '18', name: 'Programming Guide 2024', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 567, stock: 150, images: ['https://via.placeholder.com/300x200?text=Programming+Book'], category: 'Books', isBestSeller: true },
+        { _id: '19', name: 'Cookbook Collection', price: 24.99, originalPrice: 29.99, rating: 4.5, reviews: 345, stock: 100, images: ['https://via.placeholder.com/300x200?text=Cookbook'], category: 'Books', isBestSeller: true },
+        { _id: '20', name: 'Children\'s Story Book', price: 9.99, originalPrice: 14.99, rating: 4.7, reviews: 234, stock: 300, images: ['https://via.placeholder.com/300x200?text=Children+Book'], category: 'Books', isBestSeller: true },
+      ]
     },
-    {
-      id: 4,
-      title: "Total Revenue",
-      value: `$${dashboardStats.totalRevenue.toLocaleString()}`,
-      icon: FiDollarSign,
-      color: "bg-orange-500",
-      link: "/analytics",
-      description: "Total sales revenue"
+    { 
+      id: '6', 
+      name: 'Toys & Games', 
+      icon: '🎮', 
+      color: 'bg-red-500',
+      slug: 'toys-games',
+      bestSellers: [
+        { _id: '21', name: 'Board Game Strategy', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 234, stock: 75, images: ['https://via.placeholder.com/300x200?text=Board+Game'], category: 'Toys & Games', isBestSeller: true },
+        { _id: '22', name: 'LEGO Building Set', price: 59.99, originalPrice: 79.99, rating: 4.8, reviews: 456, stock: 60, images: ['https://via.placeholder.com/300x200?text=LEGO'], category: 'Toys & Games', isBestSeller: true },
+        { _id: '23', name: 'Remote Control Car', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: ['https://via.placeholder.com/300x200?text=RC+Car'], category: 'Toys & Games', isBestSeller: true },
+        { _id: '24', name: 'Puzzle 1000 Pieces', price: 19.99, originalPrice: 24.99, rating: 4.5, reviews: 123, stock: 120, images: ['https://via.placeholder.com/300x200?text=Puzzle'], category: 'Toys & Games', isBestSeller: true },
+      ]
     },
-    {
-      id: 5,
-      title: "AI Analytics",
-      value: "Live",
-      icon: FiBarChart3,
-      color: "bg-indigo-500",
-      link: "/analytics",
-      description: "Real-time insights"
+    { 
+      id: '7', 
+      name: 'Automotive', 
+      icon: '🚗', 
+      color: 'bg-gray-500',
+      slug: 'automotive',
+      bestSellers: [
+        { _id: '25', name: 'Car Phone Mount', price: 19.99, originalPrice: 29.99, rating: 4.4, reviews: 567, stock: 200, images: ['https://via.placeholder.com/300x200?text=Phone+Mount'], category: 'Automotive', isBestSeller: true },
+        { _id: '26', name: 'Dash Camera HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 234, stock: 80, images: ['https://via.placeholder.com/300x200?text=Dash+Camera'], category: 'Automotive', isBestSeller: true },
+        { _id: '27', name: 'Car Floor Mats', price: 39.99, originalPrice: 49.99, rating: 4.3, reviews: 189, stock: 150, images: ['https://via.placeholder.com/300x200?text=Floor+Mats'], category: 'Automotive', isBestSeller: true },
+        { _id: '28', name: 'Bluetooth Car Speaker', price: 69.99, originalPrice: 89.99, rating: 4.5, reviews: 123, stock: 60, images: ['https://via.placeholder.com/300x200?text=Car+Speaker'], category: 'Automotive', isBestSeller: true },
+      ]
     },
-    {
-      id: 6,
-      title: "Platform Integration",
-      value: "4 Active",
-      icon: FiGlobe,
-      color: "bg-teal-500",
-      link: "/integrations",
-      description: "Connected platforms"
-    }
-  ];
-
-  // Platform Integration Cards
-  const platformCards = [
-    {
-      id: 1,
-      name: "Amazon",
-      icon: FaAmazon,
-      status: "Connected",
-      color: "bg-orange-500",
-      sales: 450,
-      revenue: 25000
+    { 
+      id: '8', 
+      name: 'Health & Beauty', 
+      icon: '💄', 
+      color: 'bg-indigo-500',
+      slug: 'health-beauty',
+      bestSellers: [
+        { _id: '29', name: 'Electric Toothbrush', price: 49.99, originalPrice: 69.99, rating: 4.7, reviews: 456, stock: 100, images: ['https://via.placeholder.com/300x200?text=Toothbrush'], category: 'Health & Beauty', isBestSeller: true },
+        { _id: '30', name: 'Facial Cleanser Set', price: 29.99, originalPrice: 39.99, rating: 4.5, reviews: 234, stock: 120, images: ['https://via.placeholder.com/300x200?text=Cleanser'], category: 'Health & Beauty', isBestSeller: true },
+        { _id: '31', name: 'Hair Dryer Professional', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 75, images: ['https://via.placeholder.com/300x200?text=Hair+Dryer'], category: 'Health & Beauty', isBestSeller: true },
+        { _id: '32', name: 'Makeup Brush Set', price: 24.99, originalPrice: 34.99, rating: 4.4, reviews: 156, stock: 90, images: ['https://via.placeholder.com/300x200?text=Makeup+Brushes'], category: 'Health & Beauty', isBestSeller: true },
+      ]
     },
-    {
-      id: 2,
-      name: "Shopify",
-      icon: FaShopify,
-      status: "Connected",
-      color: "bg-green-500",
-      sales: 320,
-      revenue: 18000
+    { 
+      id: '9', 
+      name: 'Garden & Tools', 
+      icon: '🌱', 
+      color: 'bg-teal-500',
+      slug: 'garden-tools',
+      bestSellers: [
+        { _id: '33', name: 'Garden Hose 50ft', price: 34.99, originalPrice: 44.99, rating: 4.5, reviews: 234, stock: 80, images: ['https://via.placeholder.com/300x200?text=Garden+Hose'], category: 'Garden & Tools', isBestSeller: true },
+        { _id: '34', name: 'Cordless Drill Set', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 189, stock: 45, images: ['https://via.placeholder.com/300x200?text=Drill+Set'], category: 'Garden & Tools', isBestSeller: true },
+        { _id: '35', name: 'Plant Pots Set', price: 19.99, originalPrice: 29.99, rating: 4.3, reviews: 123, stock: 150, images: ['https://via.placeholder.com/300x200?text=Plant+Pots'], category: 'Garden & Tools', isBestSeller: true },
+        { _id: '36', name: 'Garden Tool Kit', price: 59.99, originalPrice: 79.99, rating: 4.6, reviews: 98, stock: 60, images: ['https://via.placeholder.com/300x200?text=Tool+Kit'], category: 'Garden & Tools', isBestSeller: true },
+      ]
     },
-    {
-      id: 3,
-      name: "eBay",
-      icon: FaEbay,
-      status: "Connected",
-      color: "bg-blue-500",
-      sales: 280,
-      revenue: 15000
+    { 
+      id: '10', 
+      name: 'Pet Supplies', 
+      icon: '🐕', 
+      color: 'bg-yellow-500',
+      slug: 'pet-supplies',
+      bestSellers: [
+        { _id: '37', name: 'Pet Food Premium', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 345, stock: 100, images: ['https://via.placeholder.com/300x200?text=Pet+Food'], category: 'Pet Supplies', isBestSeller: true },
+        { _id: '38', name: 'Pet Bed Large', price: 49.99, originalPrice: 69.99, rating: 4.5, reviews: 234, stock: 75, images: ['https://via.placeholder.com/300x200?text=Pet+Bed'], category: 'Pet Supplies', isBestSeller: true },
+        { _id: '39', name: 'Cat Scratching Post', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: ['https://via.placeholder.com/300x200?text=Scratching+Post'], category: 'Pet Supplies', isBestSeller: true },
+        { _id: '40', name: 'Dog Leash Retractable', price: 24.99, originalPrice: 34.99, rating: 4.7, reviews: 156, stock: 120, images: ['https://via.placeholder.com/300x200?text=Dog+Leash'], category: 'Pet Supplies', isBestSeller: true },
+      ]
     },
-    {
-      id: 4,
-      name: "OpenSea",
-      icon: FaOpensea,
-      status: "Connected",
-      color: "bg-purple-500",
-      sales: 120,
-      revenue: 8000
-    }
+    { 
+      id: '11', 
+      name: 'Baby Products', 
+      icon: '🍼', 
+      color: 'bg-pink-400',
+      slug: 'baby-products',
+      bestSellers: [
+        { _id: '41', name: 'Baby Diapers Pack', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 456, stock: 200, images: ['https://via.placeholder.com/300x200?text=Diapers'], category: 'Baby Products', isBestSeller: true },
+        { _id: '42', name: 'Baby Formula Premium', price: 29.99, originalPrice: 39.99, rating: 4.7, reviews: 234, stock: 150, images: ['https://via.placeholder.com/300x200?text=Baby+Formula'], category: 'Baby Products', isBestSeller: true },
+        { _id: '43', name: 'Baby Stroller Lightweight', price: 149.99, originalPrice: 199.99, rating: 4.5, reviews: 189, stock: 50, images: ['https://via.placeholder.com/300x200?text=Stroller'], category: 'Baby Products', isBestSeller: true },
+        { _id: '44', name: 'Baby Monitor HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 123, stock: 75, images: ['https://via.placeholder.com/300x200?text=Baby+Monitor'], category: 'Baby Products', isBestSeller: true },
+      ]
+    },
+    { 
+      id: '12', 
+      name: 'Office Products', 
+      icon: '💼', 
+      color: 'bg-blue-600',
+      slug: 'office-products',
+      bestSellers: [
+        { _id: '45', name: 'Wireless Mouse Ergonomic', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 120, images: ['https://via.placeholder.com/300x200?text=Mouse'], category: 'Office Products', isBestSeller: true },
+        { _id: '46', name: 'Desk Lamp LED', price: 39.99, originalPrice: 49.99, rating: 4.4, reviews: 189, stock: 90, images: ['https://via.placeholder.com/300x200?text=Desk+Lamp'], category: 'Office Products', isBestSeller: true },
+        { _id: '47', name: 'Office Chair Ergonomic', price: 199.99, originalPrice: 249.99, rating: 4.7, reviews: 156, stock: 30, images: ['https://via.placeholder.com/300x200?text=Office+Chair'], category: 'Office Products', isBestSeller: true },
+        { _id: '48', name: 'Printer All-in-One', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 98, stock: 60, images: ['https://via.placeholder.com/300x200?text=Printer'], category: 'Office Products', isBestSeller: true },
+      ]
+    },
   ];
 
   // Load data on component mount
   useEffect(() => {
-    loadFeaturedProducts();
     loadCategories();
+    loadProducts();
   }, []);
-
-  // Auto-advance carousel
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [heroSlides.length]);
-
-  const loadFeaturedProducts = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiService.getFeaturedProducts();
-      if (response.success) {
-        setFeaturedProducts(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to load featured products:', error);
-      // Add mock data for demo
-      setFeaturedProducts([
-        {
-          _id: '1',
-          name: 'Premium Wireless Headphones',
-          price: 199.99,
-          originalPrice: 249.99,
-          description: 'High-quality wireless headphones with noise cancellation',
-          images: ['/images/headphones.jpg'],
-          rating: 4.5,
-          reviews: 128,
-          stock: 50,
-          isFeatured: true
-        },
-        {
-          _id: '2',
-          name: 'Smart Fitness Watch',
-          price: 299.99,
-          originalPrice: 349.99,
-          description: 'Advanced fitness tracking with heart rate monitoring',
-          images: ['/images/watch.jpg'],
-          rating: 4.8,
-          reviews: 95,
-          stock: 30,
-          isFeatured: true
-        },
-        {
-          _id: '3',
-          name: 'Ultra HD Camera',
-          price: 599.99,
-          originalPrice: 699.99,
-          description: 'Professional 4K camera for content creators',
-          images: ['/images/camera.jpg'],
-          rating: 4.7,
-          reviews: 67,
-          stock: 15,
-          isFeatured: true
-        },
-        {
-          _id: '4',
-          name: 'Gaming Laptop',
-          price: 1299.99,
-          originalPrice: 1499.99,
-          description: 'High-performance gaming laptop with RTX graphics',
-          images: ['/images/laptop.jpg'],
-          rating: 4.9,
-          reviews: 203,
-          stock: 25,
-          isFeatured: true
-        }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const loadCategories = async () => {
     try {
@@ -260,15 +210,25 @@ const HomePage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load categories:', error);
-      // Add mock data for demo
-      setCategories([
-        { _id: '1', name: 'Electronics', slug: 'electronics', description: 'Latest gadgets and devices' },
-        { _id: '2', name: 'Fashion', slug: 'fashion', description: 'Trendy clothing and accessories' },
-        { _id: '3', name: 'Home & Garden', slug: 'home-garden', description: 'Everything for your home' },
-        { _id: '4', name: 'Sports', slug: 'sports', description: 'Sports equipment and gear' },
-        { _id: '5', name: 'Books', slug: 'books', description: 'Books and educational materials' },
-        { _id: '6', name: 'Toys', slug: 'toys', description: 'Fun toys and games' }
-      ]);
+      // Use dummy categories
+      setCategories(gosellerCategories);
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.getProducts();
+      if (response.success) {
+        setProducts(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      // Use dummy products
+      const allBestSellers = gosellerCategories.flatMap(cat => cat.bestSellers);
+      setProducts(allBestSellers);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -313,16 +273,16 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
+      {/* GoSeller Header */}
+      <header className="bg-gradient-to-r from-orange-500 to-orange-600 text-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">G</span>
+              <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
+                <span className="text-orange-600 font-bold text-sm">G</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">EHB GoSeller</span>
+              <span className="text-xl font-bold">GoSeller</span>
             </Link>
 
             {/* Search Bar */}
@@ -330,10 +290,10 @@ const HomePage: React.FC = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search products, categories, brands..."
+                  placeholder="Search GoSeller"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
                 />
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               </div>
@@ -343,10 +303,10 @@ const HomePage: React.FC = () => {
             <nav className="hidden md:flex items-center space-x-6">
               {isAuthenticated ? (
                 <>
-                  <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 transition-colors">
+                  <Link to="/dashboard" className="text-white hover:text-orange-200 transition-colors">
                     Dashboard
                   </Link>
-                  <Link to="/cart" className="relative text-gray-600 hover:text-gray-900 transition-colors">
+                  <Link to="/cart" className="relative text-white hover:text-orange-200 transition-colors">
                     <FiShoppingCart className="w-6 h-6" />
                     {getCartItemCount() > 0 && (
                       <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
@@ -355,29 +315,27 @@ const HomePage: React.FC = () => {
                     )}
                   </Link>
                   <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm font-medium">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                      <span className="text-orange-600 text-sm font-medium">
                         {user?.firstName?.charAt(0) || 'U'}
                       </span>
                     </div>
-                    <span className="text-gray-700">{user?.firstName}</span>
+                    <span className="text-white">{user?.firstName}</span>
                   </div>
                 </>
               ) : (
                 <>
                   <button
                     onClick={() => setShowLoginModal(true)}
-                    className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+                    className="text-white hover:text-orange-200 transition-colors"
                   >
-                    <FiLogIn className="w-5 h-5" />
-                    <span>Login</span>
+                    Sign In
                   </button>
                   <button
                     onClick={() => setShowRegisterModal(true)}
-                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                    className="bg-white text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50 transition-colors"
                   >
-                    <FiUserPlus className="w-5 h-5" />
-                    <span>Sign Up</span>
+                    Sign Up
                   </button>
                 </>
               )}
@@ -386,7 +344,7 @@ const HomePage: React.FC = () => {
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="md:hidden p-2 rounded-md text-white hover:text-orange-200 hover:bg-orange-700"
             >
               {isMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
             </button>
@@ -400,15 +358,15 @@ const HomePage: React.FC = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-gray-200"
+              className="md:hidden border-t border-orange-400"
             >
               <div className="px-4 py-6 space-y-4">
                 {isAuthenticated ? (
                   <>
-                    <Link to="/dashboard" className="block text-gray-600 hover:text-gray-900">
+                    <Link to="/dashboard" className="block text-white hover:text-orange-200">
                       Dashboard
                     </Link>
-                    <Link to="/cart" className="block text-gray-600 hover:text-gray-900">
+                    <Link to="/cart" className="block text-white hover:text-orange-200">
                       Cart ({getCartItemCount()})
                     </Link>
                   </>
@@ -416,13 +374,13 @@ const HomePage: React.FC = () => {
                   <>
                     <button
                       onClick={() => setShowLoginModal(true)}
-                      className="block w-full text-left text-gray-600 hover:text-gray-900"
+                      className="block w-full text-left text-white hover:text-orange-200"
                     >
-                      Login
+                      Sign In
                     </button>
                     <button
                       onClick={() => setShowRegisterModal(true)}
-                      className="block w-full text-left text-gray-600 hover:text-gray-900"
+                      className="block w-full text-left text-white hover:text-orange-200"
                     >
                       Sign Up
                     </button>
@@ -434,299 +392,133 @@ const HomePage: React.FC = () => {
         </AnimatePresence>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="relative h-96 md:h-[600px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentSlide}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className={`absolute inset-0 bg-gradient-to-r ${heroSlides[currentSlide].bgGradient}`}
-            >
-              <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-              <div className="relative h-full flex items-center">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="max-w-3xl">
-                    <motion.h1
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-4xl md:text-6xl font-bold text-white mb-4"
-                    >
-                      {heroSlides[currentSlide].title}
-                    </motion.h1>
-                    <motion.p
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                      className="text-xl md:text-2xl text-white mb-6"
-                    >
-                      {heroSlides[currentSlide].subtitle}
-                    </motion.p>
-                    <motion.p
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.6 }}
-                      className="text-lg text-white/90 mb-8"
-                    >
-                      {heroSlides[currentSlide].description}
-                    </motion.p>
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.8 }}
-                    >
-                      <Link
-                        to={heroSlides[currentSlide].ctaLink}
-                        className="inline-flex items-center px-8 py-4 bg-white text-purple-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        {heroSlides[currentSlide].ctaText}
-                      </Link>
-                    </motion.div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Carousel indicators */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
-            {heroSlides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`w-3 h-3 rounded-full transition-colors ${
-                  index === currentSlide ? 'bg-white' : 'bg-white/50'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Dashboard Cards Section */}
-      <section className="py-16 bg-white">
+      {/* Categories Bar */}
+      <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Platform Overview</h2>
-            <p className="text-lg text-gray-600">Real-time statistics and performance metrics</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dashboardCards.map((card) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300"
-              >
-                <Link to={card.link} className="block">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center`}>
-                      <card.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <FiZap className="w-5 h-5 text-green-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{card.title}</h3>
-                  <p className="text-3xl font-bold text-gray-900 mb-2">{card.value}</p>
-                  <p className="text-sm text-gray-600">{card.description}</p>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Platform Integration Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Platform Integrations</h2>
-            <p className="text-lg text-gray-600">Connected marketplaces and sales channels</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {platformCards.map((platform) => (
-              <motion.div
-                key={platform.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.05 }}
-                className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 ${platform.color} rounded-lg flex items-center justify-center`}>
-                    <platform.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="text-sm font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                    {platform.status}
-                  </span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{platform.name}</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Sales:</span>
-                    <span className="font-medium">{platform.sales}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Revenue:</span>
-                    <span className="font-medium">${platform.revenue.toLocaleString()}</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Categories Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Shop by Category</h2>
-            <p className="text-lg text-gray-600">Discover amazing products in your favorite categories</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            {categories.slice(0, 6).map((category) => (
+          <div className="flex items-center space-x-8 py-2 overflow-x-auto">
+            {gosellerCategories.map((category) => (
               <Link
-                key={category._id}
+                key={category.id}
                 to={`/category/${category.slug}`}
-                className="group bg-gray-50 rounded-lg p-6 text-center hover:bg-purple-50 transition-colors"
+                className="flex items-center space-x-2 px-3 py-2 rounded-lg whitespace-nowrap transition-colors text-gray-600 hover:text-orange-600 hover:bg-orange-50"
               >
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 transition-colors">
-                  <span className="text-2xl">📦</span>
-                </div>
-                <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
-                  {category.name}
-                </h3>
+                <span className="text-lg">{category.icon}</span>
+                <span className="text-sm font-medium">{category.name}</span>
               </Link>
             ))}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Featured Products Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Products</h2>
-            <p className="text-lg text-gray-600">Handpicked products just for you</p>
-          </div>
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="bg-gray-200 rounded-lg h-80 animate-pulse"></div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product) => (
-                <motion.div
-                  key={product._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -5 }}
-                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Sell Button - Prominent GoSeller-style */}
+        <div className="mb-8">
+          <Link
+            to="/seller-dashboard"
+            className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 py-4 rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+          >
+            <FiPackage className="w-6 h-6" />
+            <span className="text-lg font-semibold">Start Selling Today!</span>
+            <FiChevronRight className="w-5 h-5" />
+          </Link>
+        </div>
+
+        {/* Best Sellers by Category */}
+        <div className="space-y-12">
+          {gosellerCategories.map((category) => (
+            <section key={category.id} className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{category.icon}</span>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{category.name} Best Sellers</h2>
+                    <p className="text-gray-600">Top products in {category.name.toLowerCase()}</p>
+                  </div>
+                </div>
+                <Link
+                  to={`/category/${category.slug}`}
+                  className="flex items-center space-x-2 text-orange-600 hover:text-orange-700 font-medium"
                 >
-                  <div className="relative">
-                    <img
-                      src={product.images[0] || 'https://via.placeholder.com/300x200?text=Product'}
-                      alt={product.name}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                    {product.isFeatured && (
-                      <span className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs">
-                        Featured
-                      </span>
-                    )}
-                    <button className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors">
-                      <FiHeart className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
-                    <div className="flex items-center mb-2">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <FiStar
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-gray-600 ml-2">({product.reviews})</span>
+                  <span>View All</span>
+                  <FiChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {category.bestSellers.map((product) => (
+                  <motion.div
+                    key={product._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ y: -5 }}
+                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200"
+                  >
+                    <div className="relative">
+                      <img
+                        src={product.images[0] || 'https://via.placeholder.com/300x200?text=Product'}
+                        alt={product.name}
+                        className="w-full h-48 object-cover rounded-t-lg"
+                      />
+                      {product.originalPrice && product.price < product.originalPrice && (
+                        <span className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">
+                          {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                        </span>
+                      )}
+                      {product.isBestSeller && (
+                        <span className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium">
+                          Best Seller
+                        </span>
+                      )}
+                      <button className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors">
+                        <FiHeart className="w-4 h-4 text-gray-600" />
+                      </button>
                     </div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <span className="text-lg font-bold text-gray-900">${product.price}</span>
-                        {product.originalPrice && (
-                          <span className="text-sm text-gray-500 line-through ml-2">
-                            ${product.originalPrice}
-                          </span>
-                        )}
+                    <div className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-sm">
+                        {product.name}
+                      </h3>
+                      <div className="flex items-center mb-2">
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <FiStar
+                              key={i}
+                              className={`w-3 h-3 ${
+                                i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-600 ml-1">({product.reviews})</span>
                       </div>
-                      <span className="text-sm text-green-600 font-medium">
-                        {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
-                      </span>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <span className="text-lg font-bold text-gray-900">${product.price}</span>
+                          {product.originalPrice && product.price < product.originalPrice && (
+                            <span className="text-sm text-gray-500 line-through ml-2">
+                              ${product.originalPrice}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-green-600 font-medium">
+                          {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleAddToCart(product)}
+                        disabled={product.stock === 0}
+                        className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                      >
+                        Add to Cart
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleAddToCart(product)}
-                      disabled={product.stock === 0}
-                      className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Add to Cart
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose EHB GoSeller?</h2>
-            <p className="text-lg text-gray-600">Experience the future of e-commerce</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiTruck className="w-8 h-8 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Fast Shipping</h3>
-              <p className="text-gray-600">Free shipping on orders over $50</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiShield className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Secure Payments</h3>
-              <p className="text-gray-600">100% secure payment processing</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiGift className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Easy Returns</h3>
-              <p className="text-gray-600">30-day money-back guarantee</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiTrendingUp className="w-8 h-8 text-orange-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">AI Recommendations</h3>
-              <p className="text-gray-600">Personalized product suggestions</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </main>
 
       {/* Login Modal */}
       <AnimatePresence>
@@ -745,7 +537,7 @@ const HomePage: React.FC = () => {
               className="bg-white rounded-lg p-8 max-w-md w-full"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Login</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Sign In</h2>
               {authError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                   {authError}
@@ -758,7 +550,7 @@ const HomePage: React.FC = () => {
                     type="email"
                     value={loginForm.email}
                     onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -768,16 +560,16 @@ const HomePage: React.FC = () => {
                     type="password"
                     value={loginForm.password}
                     onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <button
                     type="submit"
-                    className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                    className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors"
                   >
-                    Login
+                    Sign In
                   </button>
                   <button
                     type="button"
@@ -785,7 +577,7 @@ const HomePage: React.FC = () => {
                       setShowLoginModal(false);
                       setShowRegisterModal(true);
                     }}
-                    className="text-purple-600 hover:text-purple-700"
+                    className="text-orange-600 hover:text-orange-700"
                   >
                     Create Account
                   </button>
@@ -827,7 +619,7 @@ const HomePage: React.FC = () => {
                       type="text"
                       value={registerForm.firstName}
                       onChange={(e) => setRegisterForm({ ...registerForm, firstName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -837,7 +629,7 @@ const HomePage: React.FC = () => {
                       type="text"
                       value={registerForm.lastName}
                       onChange={(e) => setRegisterForm({ ...registerForm, lastName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -848,7 +640,7 @@ const HomePage: React.FC = () => {
                     type="email"
                     value={registerForm.email}
                     onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -858,14 +650,14 @@ const HomePage: React.FC = () => {
                     type="password"
                     value={registerForm.password}
                     onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <button
                     type="submit"
-                    className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                    className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors"
                   >
                     Create Account
                   </button>
@@ -875,7 +667,7 @@ const HomePage: React.FC = () => {
                       setShowRegisterModal(false);
                       setShowLoginModal(true);
                     }}
-                    className="text-purple-600 hover:text-purple-700"
+                    className="text-orange-600 hover:text-orange-700"
                   >
                     Already have an account?
                   </button>

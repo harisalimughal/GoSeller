@@ -6,7 +6,7 @@ import {
   FiShoppingBag,
   FiShoppingCart,
   FiUsers,
-  FiBarChart3,
+  FiBarChart,
   FiMenu,
   FiX,
   FiLogOut,
@@ -32,7 +32,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Products', href: '/products', icon: FiShoppingBag },
     { name: 'Orders', href: '/orders', icon: FiShoppingCart },
     { name: 'Customers', href: '/customers', icon: FiUsers },
-    { name: 'Analytics', href: '/analytics', icon: FiBarChart3 },
+    { name: 'Analytics', href: '/analytics', icon: FiBarChart },
   ];
 
   const handleLogout = async () => {

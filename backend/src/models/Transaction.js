@@ -177,7 +177,6 @@ const transactionSchema = new mongoose.Schema({
 });
 
 // Indexes
-transactionSchema.index({ transactionId: 1 }, { unique: true });
 transactionSchema.index({ orderId: 1 });
 transactionSchema.index({ 'fromWallet.ownerId': 1 });
 transactionSchema.index({ 'toWallet.ownerId': 1 });
