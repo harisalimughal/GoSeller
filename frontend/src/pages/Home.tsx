@@ -1,17 +1,11 @@
-import React from 'react'
 import { Link } from 'react-router-dom'
 import {
   ShoppingCart,
-  Store,
-  TrendingUp,
   Users,
+  TrendingUp,
   Package,
-  Shield,
-  Zap,
-  Globe,
-  ArrowRight,
   Star,
-  CheckCircle
+  ArrowRight
 } from 'lucide-react'
 
 const Home: React.FC = () => {
@@ -96,7 +90,7 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-gray-50 p-8 rounded-xl">
               <div className="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <Store className="h-6 w-6 text-blue-600" />
+                <ShoppingCart className="h-6 w-6 text-blue-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Store Management</h3>
               <p className="text-gray-600">
@@ -146,7 +140,7 @@ const Home: React.FC = () => {
 
             <div className="bg-gray-50 p-8 rounded-xl">
               <div className="bg-indigo-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-indigo-600" />
+                <ShoppingCart className="h-6 w-6 text-indigo-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Secure Payments</h3>
               <p className="text-gray-600">

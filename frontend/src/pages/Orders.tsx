@@ -1,11 +1,10 @@
-import React from 'react'
-
 interface Order {
   id: string
+  orderNumber: string
   customer: string
-  date: string
   total: number
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+  date: string
   items: number
 }
 
@@ -13,6 +12,7 @@ const Orders = () => {
   const orders: Order[] = [
     {
       id: '#1234',
+      orderNumber: '#1234',
       customer: 'John Doe',
       date: '2024-01-15',
       total: 299.99,
@@ -21,6 +21,7 @@ const Orders = () => {
     },
     {
       id: '#1235',
+      orderNumber: '#1235',
       customer: 'Jane Smith',
       date: '2024-01-14',
       total: 199.99,
@@ -29,6 +30,7 @@ const Orders = () => {
     },
     {
       id: '#1236',
+      orderNumber: '#1236',
       customer: 'Bob Johnson',
       date: '2024-01-13',
       total: 399.99,
@@ -37,6 +39,7 @@ const Orders = () => {
     },
     {
       id: '#1237',
+      orderNumber: '#1237',
       customer: 'Alice Brown',
       date: '2024-01-12',
       total: 599.99,

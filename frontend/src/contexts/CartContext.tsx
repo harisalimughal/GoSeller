@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { Cart, CartItem, Product, ProductVariant } from '../services/api';
+import { Cart, Product, ProductVariant } from '../services/api';
 import apiService from '../services/api';
 
 // Cart State Interface

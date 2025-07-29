@@ -9,6 +9,7 @@ import Products from './pages/Products';
 import Orders from './pages/Orders';
 import Customers from './pages/Customers';
 import Analytics from './pages/Analytics';
+import SellerDashboard from './pages/SellerDashboard';
 import Layout from './components/Layout';
 import './styles/HomePage.css';
 
@@ -27,6 +28,7 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            <Route path="/seller-dashboard" element={<SellerDashboard />} />
             <Route path="/products" element={
               <ProtectedRoute>
                 <Layout>
