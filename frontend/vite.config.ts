@@ -1,10 +1,23 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { copyFileSync } from 'fs'
+import { join } from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'copy-redirects',
+      writeBundle() {
+        copyFileSync(
+          join(__dirname, 'public', '_redirects'),
+          join(__dirname, 'dist', '_redirects')
+        )
+      }
+    }
+  ],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
