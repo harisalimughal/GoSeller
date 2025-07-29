@@ -1,36 +1,19 @@
 {
   "rewrites": [
     {
-      "source": "/seller-dashboard",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/dashboard",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/products",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/orders",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/customers",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/analytics",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/category/:slug",
-      "destination": "/index.html"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     }
   ]
 } 
