@@ -30,32 +30,32 @@ function App() {
             } />
             <Route path="/seller-dashboard" element={<SellerDashboard />} />
             <Route path="/products" element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <Layout>
                   <Products />
                 </Layout>
-              </ProtectedRoute>
+              // </ProtectedRoute>
             } />
             <Route path="/orders" element={
-              <ProtectedRoute>
+              //<ProtectedRoute>
                 <Layout>
                   <Orders />
                 </Layout>
-              </ProtectedRoute>
+              //</ProtectedRoute>
             } />
             <Route path="/customers" element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <Layout>
                   <Customers />
                 </Layout>
-              </ProtectedRoute>
+              // </ProtectedRoute>
             } />
             <Route path="/analytics" element={
-              <ProtectedRoute>
+              //<ProtectedRoute>
                 <Layout>
                   <Analytics />
                 </Layout>
-              </ProtectedRoute>
+              //</ProtectedRoute>
             } />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
