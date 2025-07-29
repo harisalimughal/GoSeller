@@ -14,6 +14,10 @@ import Layout from './components/Layout';
 import './styles/HomePage.css';
 
 function App() {
+  console.log('🚀 App component rendering - Current pathname:', window.location.pathname);
+  console.log('🚀 App component rendering - Current URL:', window.location.href);
+  console.log('🚀 App component rendering - User agent:', navigator.userAgent);
+  
   return (
     <AuthProvider>
       <CartProvider>
@@ -29,6 +33,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/seller-dashboard" element={<SellerDashboard />} />
+            <Route path="/test" element={<div style={{padding: '20px', fontSize: '24px', color: 'green'}}>✅ Test route is working! Current URL: {window.location.href}</div>} />
             <Route path="/products" element={
               // <ProtectedRoute>
                 <Layout>

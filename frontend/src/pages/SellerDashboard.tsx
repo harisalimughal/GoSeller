@@ -17,8 +17,10 @@ import {
 } from 'react-icons/fi';
 
 const SellerDashboard: React.FC = () => {
-  console.log('SellerDashboard component is rendering');
+  console.log('🎯 SellerDashboard component is rendering - URL:', window.location.href);
+  console.log('🎯 Current pathname:', window.location.pathname);
   
+
 
 
   const benefits = [
