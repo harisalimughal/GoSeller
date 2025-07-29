@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   FiSearch, FiShoppingCart, FiHeart, FiMenu, FiX, FiStar,
-  FiChevronRight, FiPackage
+  FiChevronRight
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -33,7 +33,7 @@ const HomePage: React.FC = () => {
 
   const { user, isAuthenticated, login, register, error: authError } = useAuth();
   const { addToCart, getCartItemCount } = useCart();
-  
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Helper function to get product images based on category
@@ -64,20 +64,52 @@ const HomePage: React.FC = () => {
         'Camping Tent 4-Person': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=300&h=200&fit=crop&crop=center'
       },
       'Books': {
-        'The Great Novel': 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=200&fit=crop&crop=center',
-        'Science Fiction Anthology': 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=200&fit=crop&crop=center'
-      },
-      'Beauty & Personal Care': {
-        'Organic Face Serum': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=200&fit=crop&crop=center',
-        'Natural Deodorant': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=200&fit=crop&crop=center'
+        'The Great Gatsby': 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=200&fit=crop&crop=center',
+        'Programming Guide 2024': 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=200&fit=crop&crop=center',
+        'Cookbook Collection': 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=200&fit=crop&crop=center',
+        'Children\'s Story Book': 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=200&fit=crop&crop=center'
       },
       'Toys & Games': {
-        'Building Blocks Set': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&crop=center',
-        'Strategy Board Game': 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=300&h=200&fit=crop&crop=center'
+        'Board Game Strategy': 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=300&h=200&fit=crop&crop=center',
+        'LEGO Building Set': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&crop=center',
+        'Remote Control Car': 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=200&fit=crop&crop=center',
+        'Puzzle 1000 Pieces': 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=300&h=200&fit=crop&crop=center'
       },
       'Automotive': {
         'Car Phone Mount': 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=200&fit=crop&crop=center',
-        'Portable Car Vacuum': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&crop=center'
+        'Dash Camera HD': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&crop=center',
+        'Car Floor Mats': 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=200&fit=crop&crop=center',
+        'Bluetooth Car Speaker': 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=200&fit=crop&crop=center'
+      },
+      'Health & Beauty': {
+        'Electric Toothbrush': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=200&fit=crop&crop=center',
+        'Facial Cleanser Set': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=200&fit=crop&crop=center',
+        'Hair Dryer Professional': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=200&fit=crop&crop=center',
+        'Makeup Brush Set': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=200&fit=crop&crop=center'
+      },
+      'Garden & Tools': {
+        'Garden Hose 50ft': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=200&fit=crop&crop=center',
+        'Cordless Drill Set': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&crop=center',
+        'Plant Pots Set': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=300&h=200&fit=crop&crop=center',
+        'Garden Tool Kit': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop&crop=center'
+      },
+      'Pet Supplies': {
+        'Pet Food Premium': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=200&fit=crop&crop=center',
+        'Pet Bed Large': 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&h=200&fit=crop&crop=center',
+        'Cat Scratching Post': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=200&fit=crop&crop=center',
+        'Dog Leash Retractable': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=200&fit=crop&crop=center'
+      },
+      'Baby Products': {
+        'Baby Diapers Pack': 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&h=200&fit=crop&crop=center',
+        'Baby Formula Premium': 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&h=200&fit=crop&crop=center',
+        'Baby Stroller Lightweight': 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&h=200&fit=crop&crop=center',
+        'Baby Monitor HD': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300&h=200&fit=crop&crop=center'
+      },
+      'Office Products': {
+        'Wireless Mouse Ergonomic': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300&h=200&fit=crop&crop=center',
+        'Desk Lamp LED': 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=300&h=200&fit=crop&crop=center',
+        'Office Chair Ergonomic': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300&h=200&fit=crop&crop=center',
+        'Printer All-in-One': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300&h=200&fit=crop&crop=center'
       }
     };
     
@@ -164,10 +196,10 @@ const HomePage: React.FC = () => {
       color: 'bg-blue-500',
       slug: 'electronics',
       bestSellers: [
-        { _id: '1', name: 'Wireless Bluetooth Headphones', price: 89.99, originalPrice: 129.99, rating: 4.5, reviews: 1247, stock: 50, images: ['https://via.placeholder.com/300x200?text=Headphones'], category: 'Electronics', brand: 'TechPro', isBestSeller: true },
-        { _id: '2', name: 'Smartphone 128GB', price: 599.99, originalPrice: 699.99, rating: 4.8, reviews: 892, stock: 25, images: ['https://via.placeholder.com/300x200?text=Smartphone'], category: 'Electronics', brand: 'PhoneMax', isBestSeller: true },
-        { _id: '3', name: '4K Smart TV 55"', price: 449.99, originalPrice: 599.99, rating: 4.6, reviews: 567, stock: 15, images: ['https://via.placeholder.com/300x200?text=TV'], category: 'Electronics', brand: 'ViewTech', isBestSeller: true },
-        { _id: '4', name: 'Laptop 15.6" 8GB RAM', price: 799.99, originalPrice: 999.99, rating: 4.7, reviews: 423, stock: 30, images: ['https://via.placeholder.com/300x200?text=Laptop'], category: 'Electronics', brand: 'CompTech', isBestSeller: true },
+        { _id: '1', name: 'Wireless Bluetooth Headphones', price: 89.99, originalPrice: 129.99, rating: 4.5, reviews: 1247, stock: 50, images: [getProductImage('Wireless Bluetooth Headphones', 'Electronics')], category: 'Electronics', brand: 'TechPro', isBestSeller: true },
+        { _id: '2', name: 'Smartphone 128GB', price: 599.99, originalPrice: 699.99, rating: 4.8, reviews: 892, stock: 25, images: [getProductImage('Smartphone 128GB', 'Electronics')], category: 'Electronics', brand: 'PhoneMax', isBestSeller: true },
+        { _id: '3', name: '4K Smart TV 55"', price: 449.99, originalPrice: 599.99, rating: 4.6, reviews: 567, stock: 15, images: [getProductImage('4K Smart TV 55"', 'Electronics')], category: 'Electronics', brand: 'ViewTech', isBestSeller: true },
+        { _id: '4', name: 'Laptop 15.6" 8GB RAM', price: 799.99, originalPrice: 999.99, rating: 4.7, reviews: 423, stock: 30, images: [getProductImage('Laptop 15.6" 8GB RAM', 'Electronics')], category: 'Electronics', brand: 'CompTech', isBestSeller: true },
       ]
     },
     { 
@@ -177,10 +209,10 @@ const HomePage: React.FC = () => {
       color: 'bg-pink-500',
       slug: 'fashion',
       bestSellers: [
-        { _id: '5', name: 'Men\'s Casual T-Shirt', price: 24.99, originalPrice: 34.99, rating: 4.3, reviews: 156, stock: 100, images: ['https://via.placeholder.com/300x200?text=T-Shirt'], category: 'Fashion', brand: 'StyleWear', isBestSeller: true },
-        { _id: '6', name: 'Women\'s Summer Dress', price: 49.99, originalPrice: 69.99, rating: 4.4, reviews: 234, stock: 75, images: ['https://via.placeholder.com/300x200?text=Dress'], category: 'Fashion', brand: 'Fashionista', isBestSeller: true },
-        { _id: '7', name: 'Running Shoes', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 60, images: ['https://via.placeholder.com/300x200?text=Shoes'], category: 'Fashion', brand: 'SportFlex', isBestSeller: true },
-        { _id: '8', name: 'Denim Jeans', price: 59.99, originalPrice: 79.99, rating: 4.2, reviews: 98, stock: 80, images: ['https://via.placeholder.com/300x200?text=Jeans'], category: 'Fashion', brand: 'DenimCo', isBestSeller: true },
+        { _id: '5', name: 'Men\'s Casual T-Shirt', price: 24.99, originalPrice: 34.99, rating: 4.3, reviews: 156, stock: 100, images: [getProductImage('Men\'s Casual T-Shirt', 'Fashion')], category: 'Fashion', brand: 'StyleWear', isBestSeller: true },
+        { _id: '6', name: 'Women\'s Summer Dress', price: 49.99, originalPrice: 69.99, rating: 4.4, reviews: 234, stock: 75, images: [getProductImage('Women\'s Summer Dress', 'Fashion')], category: 'Fashion', brand: 'Fashionista', isBestSeller: true },
+        { _id: '7', name: 'Running Shoes', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 60, images: [getProductImage('Running Shoes', 'Fashion')], category: 'Fashion', brand: 'SportFlex', isBestSeller: true },
+        { _id: '8', name: 'Denim Jeans', price: 59.99, originalPrice: 79.99, rating: 4.2, reviews: 98, stock: 80, images: [getProductImage('Denim Jeans', 'Fashion')], category: 'Fashion', brand: 'DenimCo', isBestSeller: true },
       ]
     },
     { 
@@ -190,10 +222,10 @@ const HomePage: React.FC = () => {
       color: 'bg-green-500',
       slug: 'home-kitchen',
       bestSellers: [
-        { _id: '9', name: 'Coffee Maker', price: 89.99, originalPrice: 119.99, rating: 4.5, reviews: 312, stock: 40, images: ['https://via.placeholder.com/300x200?text=Coffee+Maker'], category: 'Home & Kitchen', brand: 'BrewMaster', isBestSeller: true },
-        { _id: '10', name: 'Kitchen Knife Set', price: 69.99, originalPrice: 89.99, rating: 4.7, reviews: 156, stock: 55, images: ['https://via.placeholder.com/300x200?text=Knife+Set'], category: 'Home & Kitchen', brand: 'SharpEdge', isBestSeller: true },
-        { _id: '11', name: 'Blender 1000W', price: 49.99, originalPrice: 69.99, rating: 4.3, reviews: 234, stock: 70, images: ['https://via.placeholder.com/300x200?text=Blender'], category: 'Home & Kitchen', brand: 'BlendPro', isBestSeller: true },
-        { _id: '12', name: 'Bedding Set Queen', price: 79.99, originalPrice: 99.99, rating: 4.4, reviews: 189, stock: 45, images: ['https://via.placeholder.com/300x200?text=Bedding'], category: 'Home & Kitchen', brand: 'SleepComfort', isBestSeller: true },
+        { _id: '9', name: 'Coffee Maker', price: 89.99, originalPrice: 119.99, rating: 4.5, reviews: 312, stock: 40, images: [getProductImage('Coffee Maker', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'BrewMaster', isBestSeller: true },
+        { _id: '10', name: 'Kitchen Knife Set', price: 69.99, originalPrice: 89.99, rating: 4.7, reviews: 156, stock: 55, images: [getProductImage('Kitchen Knife Set', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'SharpEdge', isBestSeller: true },
+        { _id: '11', name: 'Blender 1000W', price: 49.99, originalPrice: 69.99, rating: 4.3, reviews: 234, stock: 70, images: [getProductImage('Blender 1000W', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'BlendPro', isBestSeller: true },
+        { _id: '12', name: 'Bedding Set Queen', price: 79.99, originalPrice: 99.99, rating: 4.4, reviews: 189, stock: 45, images: [getProductImage('Bedding Set Queen', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'SleepComfort', isBestSeller: true },
       ]
     },
     { 
@@ -203,10 +235,10 @@ const HomePage: React.FC = () => {
       color: 'bg-orange-500',
       slug: 'sports-outdoors',
       bestSellers: [
-        { _id: '13', name: 'Yoga Mat Premium', price: 29.99, originalPrice: 39.99, rating: 4.6, reviews: 445, stock: 120, images: ['https://via.placeholder.com/300x200?text=Yoga+Mat'], category: 'Sports & Outdoors', brand: 'FitLife', isBestSeller: true },
-        { _id: '14', name: 'Basketball Official Size', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 90, images: ['https://via.placeholder.com/300x200?text=Basketball'], category: 'Sports & Outdoors', brand: 'SportBall', isBestSeller: true },
-        { _id: '15', name: 'Tennis Racket Pro', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 156, stock: 35, images: ['https://via.placeholder.com/300x200?text=Tennis+Racket'], category: 'Sports & Outdoors', brand: 'RacketPro', isBestSeller: true },
-        { _id: '16', name: 'Camping Tent 4-Person', price: 149.99, originalPrice: 199.99, rating: 4.4, reviews: 98, stock: 25, images: ['https://via.placeholder.com/300x200?text=Tent'], category: 'Sports & Outdoors', brand: 'OutdoorLife', isBestSeller: true },
+        { _id: '13', name: 'Yoga Mat Premium', price: 29.99, originalPrice: 39.99, rating: 4.6, reviews: 445, stock: 120, images: [getProductImage('Yoga Mat Premium', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'FitLife', isBestSeller: true },
+        { _id: '14', name: 'Basketball Official Size', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 90, images: [getProductImage('Basketball Official Size', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'SportBall', isBestSeller: true },
+        { _id: '15', name: 'Tennis Racket Pro', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 156, stock: 35, images: [getProductImage('Tennis Racket Pro', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'RacketPro', isBestSeller: true },
+        { _id: '16', name: 'Camping Tent 4-Person', price: 149.99, originalPrice: 199.99, rating: 4.4, reviews: 98, stock: 25, images: [getProductImage('Camping Tent 4-Person', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'OutdoorLife', isBestSeller: true },
       ]
     },
     { 
@@ -216,10 +248,10 @@ const HomePage: React.FC = () => {
       color: 'bg-purple-500',
       slug: 'books',
       bestSellers: [
-        { _id: '17', name: 'The Great Gatsby', price: 12.99, originalPrice: 16.99, rating: 4.8, reviews: 1234, stock: 200, images: ['https://via.placeholder.com/300x200?text=Book'], category: 'Books', brand: 'ClassicBooks', isBestSeller: true },
-        { _id: '18', name: 'Programming Guide 2024', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 567, stock: 150, images: ['https://via.placeholder.com/300x200?text=Programming+Book'], category: 'Books', brand: 'TechBooks', isBestSeller: true },
-        { _id: '19', name: 'Cookbook Collection', price: 24.99, originalPrice: 29.99, rating: 4.5, reviews: 345, stock: 100, images: ['https://via.placeholder.com/300x200?text=Cookbook'], category: 'Books', brand: 'CookingPro', isBestSeller: true },
-        { _id: '20', name: 'Children\'s Story Book', price: 9.99, originalPrice: 14.99, rating: 4.7, reviews: 234, stock: 300, images: ['https://via.placeholder.com/300x200?text=Children+Book'], category: 'Books', brand: 'KidsRead', isBestSeller: true },
+        { _id: '17', name: 'The Great Gatsby', price: 12.99, originalPrice: 16.99, rating: 4.8, reviews: 1234, stock: 200, images: [getProductImage('The Great Gatsby', 'Books')], category: 'Books', brand: 'ClassicBooks', isBestSeller: true },
+        { _id: '18', name: 'Programming Guide 2024', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 567, stock: 150, images: [getProductImage('Programming Guide 2024', 'Books')], category: 'Books', brand: 'TechBooks', isBestSeller: true },
+        { _id: '19', name: 'Cookbook Collection', price: 24.99, originalPrice: 29.99, rating: 4.5, reviews: 345, stock: 100, images: [getProductImage('Cookbook Collection', 'Books')], category: 'Books', brand: 'CookingPro', isBestSeller: true },
+        { _id: '20', name: 'Children\'s Story Book', price: 9.99, originalPrice: 14.99, rating: 4.7, reviews: 234, stock: 300, images: [getProductImage('Children\'s Story Book', 'Books')], category: 'Books', brand: 'KidsRead', isBestSeller: true },
       ]
     },
     { 
@@ -229,10 +261,10 @@ const HomePage: React.FC = () => {
       color: 'bg-red-500',
       slug: 'toys-games',
       bestSellers: [
-        { _id: '21', name: 'Board Game Strategy', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 234, stock: 75, images: ['https://via.placeholder.com/300x200?text=Board+Game'], category: 'Toys & Games', brand: 'GameMaster', isBestSeller: true },
-        { _id: '22', name: 'LEGO Building Set', price: 59.99, originalPrice: 79.99, rating: 4.8, reviews: 456, stock: 60, images: ['https://via.placeholder.com/300x200?text=LEGO'], category: 'Toys & Games', brand: 'LEGO', isBestSeller: true },
-        { _id: '23', name: 'Remote Control Car', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: ['https://via.placeholder.com/300x200?text=RC+Car'], category: 'Toys & Games', brand: 'RCPro', isBestSeller: true },
-        { _id: '24', name: 'Puzzle 1000 Pieces', price: 19.99, originalPrice: 24.99, rating: 4.5, reviews: 123, stock: 120, images: ['https://via.placeholder.com/300x200?text=Puzzle'], category: 'Toys & Games', brand: 'PuzzleMaster', isBestSeller: true },
+        { _id: '21', name: 'Board Game Strategy', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 234, stock: 75, images: [getProductImage('Board Game Strategy', 'Toys & Games')], category: 'Toys & Games', brand: 'GameMaster', isBestSeller: true },
+        { _id: '22', name: 'LEGO Building Set', price: 59.99, originalPrice: 79.99, rating: 4.8, reviews: 456, stock: 60, images: [getProductImage('LEGO Building Set', 'Toys & Games')], category: 'Toys & Games', brand: 'LEGO', isBestSeller: true },
+        { _id: '23', name: 'Remote Control Car', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: [getProductImage('Remote Control Car', 'Toys & Games')], category: 'Toys & Games', brand: 'RCPro', isBestSeller: true },
+        { _id: '24', name: 'Puzzle 1000 Pieces', price: 19.99, originalPrice: 24.99, rating: 4.5, reviews: 123, stock: 120, images: [getProductImage('Puzzle 1000 Pieces', 'Toys & Games')], category: 'Toys & Games', brand: 'PuzzleMaster', isBestSeller: true },
       ]
     },
     { 
@@ -242,10 +274,10 @@ const HomePage: React.FC = () => {
       color: 'bg-gray-500',
       slug: 'automotive',
       bestSellers: [
-        { _id: '25', name: 'Car Phone Mount', price: 19.99, originalPrice: 29.99, rating: 4.4, reviews: 567, stock: 200, images: ['https://via.placeholder.com/300x200?text=Phone+Mount'], category: 'Automotive', brand: 'CarTech', isBestSeller: true },
-        { _id: '26', name: 'Dash Camera HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 234, stock: 80, images: ['https://via.placeholder.com/300x200?text=Dash+Camera'], category: 'Automotive', brand: 'DashCam', isBestSeller: true },
-        { _id: '27', name: 'Car Floor Mats', price: 39.99, originalPrice: 49.99, rating: 4.3, reviews: 189, stock: 150, images: ['https://via.placeholder.com/300x200?text=Floor+Mats'], category: 'Automotive', brand: 'MatPro', isBestSeller: true },
-        { _id: '28', name: 'Bluetooth Car Speaker', price: 69.99, originalPrice: 89.99, rating: 4.5, reviews: 123, stock: 60, images: ['https://via.placeholder.com/300x200?text=Car+Speaker'], category: 'Automotive', brand: 'SoundPro', isBestSeller: true },
+        { _id: '25', name: 'Car Phone Mount', price: 19.99, originalPrice: 29.99, rating: 4.4, reviews: 567, stock: 200, images: [getProductImage('Car Phone Mount', 'Automotive')], category: 'Automotive', brand: 'CarTech', isBestSeller: true },
+        { _id: '26', name: 'Dash Camera HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 234, stock: 80, images: [getProductImage('Dash Camera HD', 'Automotive')], category: 'Automotive', brand: 'DashCam', isBestSeller: true },
+        { _id: '27', name: 'Car Floor Mats', price: 39.99, originalPrice: 49.99, rating: 4.3, reviews: 189, stock: 150, images: [getProductImage('Car Floor Mats', 'Automotive')], category: 'Automotive', brand: 'MatPro', isBestSeller: true },
+        { _id: '28', name: 'Bluetooth Car Speaker', price: 69.99, originalPrice: 89.99, rating: 4.5, reviews: 123, stock: 60, images: [getProductImage('Bluetooth Car Speaker', 'Automotive')], category: 'Automotive', brand: 'SoundPro', isBestSeller: true },
       ]
     },
     { 
@@ -255,10 +287,10 @@ const HomePage: React.FC = () => {
       color: 'bg-indigo-500',
       slug: 'health-beauty',
       bestSellers: [
-        { _id: '29', name: 'Electric Toothbrush', price: 49.99, originalPrice: 69.99, rating: 4.7, reviews: 456, stock: 100, images: ['https://via.placeholder.com/300x200?text=Toothbrush'], category: 'Health & Beauty', brand: 'DentalPro', isBestSeller: true },
-        { _id: '30', name: 'Facial Cleanser Set', price: 29.99, originalPrice: 39.99, rating: 4.5, reviews: 234, stock: 120, images: ['https://via.placeholder.com/300x200?text=Cleanser'], category: 'Health & Beauty', brand: 'BeautyCare', isBestSeller: true },
-        { _id: '31', name: 'Hair Dryer Professional', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 75, images: ['https://via.placeholder.com/300x200?text=Hair+Dryer'], category: 'Health & Beauty', brand: 'HairPro', isBestSeller: true },
-        { _id: '32', name: 'Makeup Brush Set', price: 24.99, originalPrice: 34.99, rating: 4.4, reviews: 156, stock: 90, images: ['https://via.placeholder.com/300x200?text=Makeup+Brushes'], category: 'Health & Beauty', brand: 'MakeupPro', isBestSeller: true },
+        { _id: '29', name: 'Electric Toothbrush', price: 49.99, originalPrice: 69.99, rating: 4.7, reviews: 456, stock: 100, images: [getProductImage('Electric Toothbrush', 'Health & Beauty')], category: 'Health & Beauty', brand: 'DentalPro', isBestSeller: true },
+        { _id: '30', name: 'Facial Cleanser Set', price: 29.99, originalPrice: 39.99, rating: 4.5, reviews: 234, stock: 120, images: [getProductImage('Facial Cleanser Set', 'Health & Beauty')], category: 'Health & Beauty', brand: 'BeautyCare', isBestSeller: true },
+        { _id: '31', name: 'Hair Dryer Professional', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 75, images: [getProductImage('Hair Dryer Professional', 'Health & Beauty')], category: 'Health & Beauty', brand: 'HairPro', isBestSeller: true },
+        { _id: '32', name: 'Makeup Brush Set', price: 24.99, originalPrice: 34.99, rating: 4.4, reviews: 156, stock: 90, images: [getProductImage('Makeup Brush Set', 'Health & Beauty')], category: 'Health & Beauty', brand: 'MakeupPro', isBestSeller: true },
       ]
     },
     { 
@@ -268,10 +300,10 @@ const HomePage: React.FC = () => {
       color: 'bg-teal-500',
       slug: 'garden-tools',
       bestSellers: [
-        { _id: '33', name: 'Garden Hose 50ft', price: 34.99, originalPrice: 44.99, rating: 4.5, reviews: 234, stock: 80, images: ['https://via.placeholder.com/300x200?text=Garden+Hose'], category: 'Garden & Tools', brand: 'GardenPro', isBestSeller: true },
-        { _id: '34', name: 'Cordless Drill Set', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 189, stock: 45, images: ['https://via.placeholder.com/300x200?text=Drill+Set'], category: 'Garden & Tools', brand: 'ToolPro', isBestSeller: true },
-        { _id: '35', name: 'Plant Pots Set', price: 19.99, originalPrice: 29.99, rating: 4.3, reviews: 123, stock: 150, images: ['https://via.placeholder.com/300x200?text=Plant+Pots'], category: 'Garden & Tools', brand: 'PlantCare', isBestSeller: true },
-        { _id: '36', name: 'Garden Tool Kit', price: 59.99, originalPrice: 79.99, rating: 4.6, reviews: 98, stock: 60, images: ['https://via.placeholder.com/300x200?text=Tool+Kit'], category: 'Garden & Tools', brand: 'GardenTools', isBestSeller: true },
+        { _id: '33', name: 'Garden Hose 50ft', price: 34.99, originalPrice: 44.99, rating: 4.5, reviews: 234, stock: 80, images: [getProductImage('Garden Hose 50ft', 'Garden & Tools')], category: 'Garden & Tools', brand: 'GardenPro', isBestSeller: true },
+        { _id: '34', name: 'Cordless Drill Set', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 189, stock: 45, images: [getProductImage('Cordless Drill Set', 'Garden & Tools')], category: 'Garden & Tools', brand: 'ToolPro', isBestSeller: true },
+        { _id: '35', name: 'Plant Pots Set', price: 19.99, originalPrice: 29.99, rating: 4.3, reviews: 123, stock: 150, images: [getProductImage('Plant Pots Set', 'Garden & Tools')], category: 'Garden & Tools', brand: 'PlantCare', isBestSeller: true },
+        { _id: '36', name: 'Garden Tool Kit', price: 59.99, originalPrice: 79.99, rating: 4.6, reviews: 98, stock: 60, images: [getProductImage('Garden Tool Kit', 'Garden & Tools')], category: 'Garden & Tools', brand: 'GardenTools', isBestSeller: true },
       ]
     },
     { 
@@ -281,10 +313,10 @@ const HomePage: React.FC = () => {
       color: 'bg-yellow-500',
       slug: 'pet-supplies',
       bestSellers: [
-        { _id: '37', name: 'Pet Food Premium', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 345, stock: 100, images: ['https://via.placeholder.com/300x200?text=Pet+Food'], category: 'Pet Supplies', brand: 'PetFood', isBestSeller: true },
-        { _id: '38', name: 'Pet Bed Large', price: 49.99, originalPrice: 69.99, rating: 4.5, reviews: 234, stock: 75, images: ['https://via.placeholder.com/300x200?text=Pet+Bed'], category: 'Pet Supplies', brand: 'PetComfort', isBestSeller: true },
-        { _id: '39', name: 'Cat Scratching Post', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: ['https://via.placeholder.com/300x200?text=Scratching+Post'], category: 'Pet Supplies', brand: 'CatCare', isBestSeller: true },
-        { _id: '40', name: 'Dog Leash Retractable', price: 24.99, originalPrice: 34.99, rating: 4.7, reviews: 156, stock: 120, images: ['https://via.placeholder.com/300x200?text=Dog+Leash'], category: 'Pet Supplies', brand: 'DogPro', isBestSeller: true },
+        { _id: '37', name: 'Pet Food Premium', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 345, stock: 100, images: [getProductImage('Pet Food Premium', 'Pet Supplies')], category: 'Pet Supplies', brand: 'PetFood', isBestSeller: true },
+        { _id: '38', name: 'Pet Bed Large', price: 49.99, originalPrice: 69.99, rating: 4.5, reviews: 234, stock: 75, images: [getProductImage('Pet Bed Large', 'Pet Supplies')], category: 'Pet Supplies', brand: 'PetComfort', isBestSeller: true },
+        { _id: '39', name: 'Cat Scratching Post', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: [getProductImage('Cat Scratching Post', 'Pet Supplies')], category: 'Pet Supplies', brand: 'CatCare', isBestSeller: true },
+        { _id: '40', name: 'Dog Leash Retractable', price: 24.99, originalPrice: 34.99, rating: 4.7, reviews: 156, stock: 120, images: [getProductImage('Dog Leash Retractable', 'Pet Supplies')], category: 'Pet Supplies', brand: 'DogPro', isBestSeller: true },
       ]
     },
     { 
@@ -294,10 +326,10 @@ const HomePage: React.FC = () => {
       color: 'bg-pink-400',
       slug: 'baby-products',
       bestSellers: [
-        { _id: '41', name: 'Baby Diapers Pack', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 456, stock: 200, images: ['https://via.placeholder.com/300x200?text=Diapers'], category: 'Baby Products', brand: 'BabyCare', isBestSeller: true },
-        { _id: '42', name: 'Baby Formula Premium', price: 29.99, originalPrice: 39.99, rating: 4.7, reviews: 234, stock: 150, images: ['https://via.placeholder.com/300x200?text=Baby+Formula'], category: 'Baby Products', brand: 'BabyFood', isBestSeller: true },
-        { _id: '43', name: 'Baby Stroller Lightweight', price: 149.99, originalPrice: 199.99, rating: 4.5, reviews: 189, stock: 50, images: ['https://via.placeholder.com/300x200?text=Stroller'], category: 'Baby Products', brand: 'BabyGear', isBestSeller: true },
-        { _id: '44', name: 'Baby Monitor HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 123, stock: 75, images: ['https://via.placeholder.com/300x200?text=Baby+Monitor'], category: 'Baby Products', brand: 'BabyTech', isBestSeller: true },
+        { _id: '41', name: 'Baby Diapers Pack', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 456, stock: 200, images: [getProductImage('Baby Diapers Pack', 'Baby Products')], category: 'Baby Products', brand: 'BabyCare', isBestSeller: true },
+        { _id: '42', name: 'Baby Formula Premium', price: 29.99, originalPrice: 39.99, rating: 4.7, reviews: 234, stock: 150, images: [getProductImage('Baby Formula Premium', 'Baby Products')], category: 'Baby Products', brand: 'BabyFood', isBestSeller: true },
+        { _id: '43', name: 'Baby Stroller Lightweight', price: 149.99, originalPrice: 199.99, rating: 4.5, reviews: 189, stock: 50, images: [getProductImage('Baby Stroller Lightweight', 'Baby Products')], category: 'Baby Products', brand: 'BabyGear', isBestSeller: true },
+        { _id: '44', name: 'Baby Monitor HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 123, stock: 75, images: [getProductImage('Baby Monitor HD', 'Baby Products')], category: 'Baby Products', brand: 'BabyTech', isBestSeller: true },
       ]
     },
     { 
@@ -307,10 +339,10 @@ const HomePage: React.FC = () => {
       color: 'bg-blue-600',
       slug: 'office-products',
       bestSellers: [
-        { _id: '45', name: 'Wireless Mouse Ergonomic', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 120, images: ['https://via.placeholder.com/300x200?text=Mouse'], category: 'Office Products', brand: 'OfficePro', isBestSeller: true },
-        { _id: '46', name: 'Desk Lamp LED', price: 39.99, originalPrice: 49.99, rating: 4.4, reviews: 189, stock: 90, images: ['https://via.placeholder.com/300x200?text=Desk+Lamp'], category: 'Office Products', brand: 'LightPro', isBestSeller: true },
-        { _id: '47', name: 'Office Chair Ergonomic', price: 199.99, originalPrice: 249.99, rating: 4.7, reviews: 156, stock: 30, images: ['https://via.placeholder.com/300x200?text=Office+Chair'], category: 'Office Products', brand: 'ChairPro', isBestSeller: true },
-        { _id: '48', name: 'Printer All-in-One', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 98, stock: 60, images: ['https://via.placeholder.com/300x200?text=Printer'], category: 'Office Products', brand: 'PrintPro', isBestSeller: true },
+        { _id: '45', name: 'Wireless Mouse Ergonomic', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 120, images: [getProductImage('Wireless Mouse Ergonomic', 'Office Products')], category: 'Office Products', brand: 'OfficePro', isBestSeller: true },
+        { _id: '46', name: 'Desk Lamp LED', price: 39.99, originalPrice: 49.99, rating: 4.4, reviews: 189, stock: 90, images: [getProductImage('Desk Lamp LED', 'Office Products')], category: 'Office Products', brand: 'LightPro', isBestSeller: true },
+        { _id: '47', name: 'Office Chair Ergonomic', price: 199.99, originalPrice: 249.99, rating: 4.7, reviews: 156, stock: 30, images: [getProductImage('Office Chair Ergonomic', 'Office Products')], category: 'Office Products', brand: 'ChairPro', isBestSeller: true },
+        { _id: '48', name: 'Printer All-in-One', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 98, stock: 60, images: [getProductImage('Printer All-in-One', 'Office Products')], category: 'Office Products', brand: 'PrintPro', isBestSeller: true },
       ]
     },
   ];
@@ -408,12 +440,12 @@ const HomePage: React.FC = () => {
             <nav className="hidden md:flex items-center space-x-6">
               {/* Cart Icon - Always visible */}
               <Link to="/cart" className="relative text-white hover:text-gray-300 transition-colors">
-                <FiShoppingCart className="w-6 h-6" />
-                {getCartItemCount() > 0 && (
-                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {getCartItemCount()}
-                  </span>
-                )}
+                    <FiShoppingCart className="w-6 h-6" />
+                    {getCartItemCount() > 0 && (
+                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                        {getCartItemCount()}
+                      </span>
+                    )}
               </Link>
               
               {isAuthenticated ? (
@@ -503,7 +535,7 @@ const HomePage: React.FC = () => {
 
       {/* Categories Bar */}
       <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-2">
             <div className="flex items-center space-x-8">
               {/* Show first 4 categories */}
@@ -539,21 +571,21 @@ const HomePage: React.FC = () => {
                     >
                       <div className="py-2">
                         {gosellerCategories.slice(4).map((category) => (
-                          <Link
+                      <Link
                             key={category.id}
                             to={`/category/${category.slug}`}
                             className="block px-4 py-2 text-white font-bold hover:text-orange-300 hover:bg-gray-700 transition-colors"
                             onClick={() => setShowCategoriesDropdown(false)}
                           >
                             <span className="text-sm">{category.name}</span>
-                          </Link>
+                      </Link>
                         ))}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            </div>
+                  </div>
+                </div>
             
             {/* Sell Button */}
             <Link
@@ -568,7 +600,7 @@ const HomePage: React.FC = () => {
             >
               Sell
             </Link>
-          </div>
+              </div>
         </div>
       </div>
 
@@ -608,17 +640,17 @@ const HomePage: React.FC = () => {
             {/* Carousel Navigation Dots */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
               {carouselImages.map((_, index) => (
-                <button
-                  key={index}
+              <button
+                key={index}
                   onClick={() => setCurrentCarouselSlide(index)}
                   className={`w-3 h-3 rounded-full transition-all duration-300 ${
                     currentCarouselSlide === index 
                       ? 'bg-white opacity-100' 
                       : 'bg-white opacity-50 hover:opacity-75'
-                  }`}
-                />
-              ))}
-            </div>
+                }`}
+              />
+            ))}
+          </div>
             
             {/* Carousel Arrow Navigation */}
             <button
@@ -633,7 +665,7 @@ const HomePage: React.FC = () => {
             >
               <FiChevronRight className="w-6 h-6" />
             </button>
-          </div>
+        </div>
         </div>
 
         {/* Content Blocks Grid */}
@@ -647,8 +679,8 @@ const HomePage: React.FC = () => {
                 alt="Gaming Setup"
                 className="w-full h-full object-cover"
               />
-            </div>
           </div>
+                    </div>
 
           {/* Block 2: Home Essentials */}
           <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
@@ -661,7 +693,7 @@ const HomePage: React.FC = () => {
                   className="w-12 h-12 rounded-lg mx-auto mb-2 object-cover"
                 />
                 <p className="text-sm font-medium text-gray-700">Cleaning Tools</p>
-              </div>
+                  </div>
               <div className="bg-green-100 rounded-lg p-3 text-center">
                 <img
                   src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=150&h=100&fit=crop&crop=center"
@@ -726,7 +758,7 @@ const HomePage: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">Today's Deals</h2>
             <Link to="/deals" className="text-orange-600 hover:text-orange-700 font-medium">
               See all deals
-            </Link>
+                </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -786,8 +818,8 @@ const HomePage: React.FC = () => {
                 </div>
               </div>
             ))}
-          </div>
-        </section>
+        </div>
+      </section>
 
         {/* Amazon-style Featured Section */}
         <section className="mb-12">
@@ -842,17 +874,17 @@ const HomePage: React.FC = () => {
                           }`}
                         />
                       ))}
-                    </div>
-                    <span className="text-sm text-gray-600 ml-1">({item.reviews})</span>
                   </div>
+                    <span className="text-sm text-gray-600 ml-1">({item.reviews})</span>
+                </div>
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-bold text-gray-900">{item.price}</span>
                     <button className="bg-orange-500 text-white px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors">
                       Add to Cart
                     </button>
                   </div>
+                  </div>
                 </div>
-              </div>
             ))}
           </div>
         </section>
@@ -869,9 +901,9 @@ const HomePage: React.FC = () => {
               <button className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors">
                 Learn More
               </button>
-            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* Amazon-style Recently Viewed */}
         <section className="mb-12">
@@ -916,22 +948,22 @@ const HomePage: React.FC = () => {
                     <button className="text-orange-600 text-sm hover:text-orange-700">
                       Add to Cart
                     </button>
-                  </div>
+          </div>
                 </div>
               </div>
             ))}
-          </div>
-        </section>
+        </div>
+      </section>
 
         {/* Best Sellers by Category */}
         <div className="space-y-12">
-          {gosellerCategories.map((category, index) => (
+          {gosellerCategories.map((category) => (
             <section key={category.id} className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">{category.name} Best Sellers</h2>
                   <p className="text-gray-600">Top products in {category.name.toLowerCase()}</p>
-                </div>
+          </div>
                 <Link
                   to={`/category/${category.slug}`}
                   className="flex items-center space-x-2 text-orange-600 hover:text-orange-700 font-medium"
@@ -939,23 +971,23 @@ const HomePage: React.FC = () => {
                   <span>View All</span>
                   <FiChevronRight className="w-4 h-4" />
                 </Link>
-              </div>
+            </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {category.bestSellers.map((product) => (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ y: -5 }}
+                <motion.div
+                  key={product._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -5 }}
                     className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200"
-                  >
-                    <div className="relative">
-                      <img
+                >
+                  <div className="relative">
+                    <img
                         src={product.images[0] || getProductImage(product.name, product.category)}
-                        alt={product.name}
-                        className="w-full h-48 object-cover rounded-t-lg"
-                      />
+                      alt={product.name}
+                      className="w-full h-48 object-cover rounded-t-lg"
+                    />
                       {product.originalPrice && product.price < product.originalPrice && (
                         <span className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium">
                           {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
@@ -964,52 +996,52 @@ const HomePage: React.FC = () => {
                       {product.isBestSeller && (
                         <span className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium">
                           Best Seller
-                        </span>
-                      )}
-                      <button className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors">
-                        <FiHeart className="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
-                    <div className="p-4">
+                      </span>
+                    )}
+                    <button className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors">
+                      <FiHeart className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                  <div className="p-4">
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-sm">
                         {product.name}
                       </h3>
-                      <div className="flex items-center mb-2">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <FiStar
-                              key={i}
+                    <div className="flex items-center mb-2">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <FiStar
+                            key={i}
                               className={`w-3 h-3 ${
-                                i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
+                              i < Math.floor(product.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
                         <span className="text-xs text-gray-600 ml-1">({product.reviews})</span>
-                      </div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <span className="text-lg font-bold text-gray-900">${product.price}</span>
-                          {product.originalPrice && product.price < product.originalPrice && (
-                            <span className="text-sm text-gray-500 line-through ml-2">
-                              ${product.originalPrice}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleAddToCart(product)}
-                          className="bg-orange-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-orange-600 transition-colors"
-                        >
-                          Add to Cart
-                        </button>
-                      </div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-            </section>
-          ))}
+                      <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <span className="text-lg font-bold text-gray-900">${product.price}</span>
+                          {product.originalPrice && product.price < product.originalPrice && (
+                          <span className="text-sm text-gray-500 line-through ml-2">
+                            ${product.originalPrice}
+                          </span>
+                        )}
+                    </div>
+                    <button
+                      onClick={() => handleAddToCart(product)}
+                          className="bg-orange-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-orange-600 transition-colors"
+                    >
+                      Add to Cart
+                    </button>
+                      </div>
+                  </div>
+                </motion.div>
+              ))}
         </div>
+      </section>
+          ))}
+          </div>
       </main>
 
       {/* Login Modal */}

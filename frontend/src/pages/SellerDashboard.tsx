@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -8,20 +8,18 @@ import {
   FiShield,
   FiTruck,
   FiTrendingUp,
-  FiCheckCircle,
   FiArrowRight,
   FiStar,
   FiPackage,
   FiShoppingCart,
   FiBarChart,
-  FiSettings,
-  FiHelpCircle
+  FiSettings
 } from 'react-icons/fi';
 
 const SellerDashboard: React.FC = () => {
   console.log('SellerDashboard component is rendering');
   
-  const [activeTab, setActiveTab] = useState('overview');
+
 
   const benefits = [
     {
@@ -88,7 +86,7 @@ const SellerDashboard: React.FC = () => {
     }
   ];
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
@@ -97,7 +95,7 @@ const SellerDashboard: React.FC = () => {
             <Link to="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-sm">G</span>
-              </div>
+      </div>
               <span className="text-xl font-bold text-gray-900">GoSeller</span>
             </Link>
             
@@ -118,7 +116,7 @@ const SellerDashboard: React.FC = () => {
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Start Selling on GoSeller
-            </h1>
+          </h1>
             <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
               Join thousands of successful sellers and reach millions of customers worldwide
             </p>
@@ -198,8 +196,8 @@ const SellerDashboard: React.FC = () => {
             <p className="text-xl text-gray-600">
               See how other sellers are growing their businesses
             </p>
-          </div>
-          
+            </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {successStories.map((story, index) => (
               <motion.div
@@ -223,7 +221,7 @@ const SellerDashboard: React.FC = () => {
                   <span className="text-sm text-gray-600 ml-2">{story.rating}</span>
                 </div>
                 <p className="text-gray-600 mb-4">"{story.story}"</p>
-                <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold text-gray-900">{story.name}</div>
                     <div className="text-sm text-gray-600">{story.business}</div>
@@ -235,7 +233,7 @@ const SellerDashboard: React.FC = () => {
               </motion.div>
             ))}
           </div>
-        </div>
+            </div>
       </section>
 
       {/* How It Works */}
@@ -248,8 +246,8 @@ const SellerDashboard: React.FC = () => {
             <p className="text-xl text-gray-600">
               Get started in just three simple steps
             </p>
-          </div>
-          
+            </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {steps.map((step, index) => (
               <motion.div
@@ -261,13 +259,13 @@ const SellerDashboard: React.FC = () => {
               >
                 <div className="w-16 h-16 bg-orange-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
                   {step.number}
-                </div>
+                  </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
                 <p className="text-gray-600">{step.description}</p>
               </motion.div>
             ))}
-          </div>
-        </div>
+                      </div>
+                    </div>
       </section>
 
       {/* Features Grid */}
@@ -284,7 +282,7 @@ const SellerDashboard: React.FC = () => {
               <div className="flex items-center mb-4">
                 <FiPackage className="w-6 h-6 text-orange-500 mr-3" />
                 <h3 className="text-lg font-semibold">Inventory Management</h3>
-              </div>
+                    </div>
               <p className="text-gray-600">Easily manage your product inventory and track stock levels</p>
             </div>
             
@@ -292,23 +290,23 @@ const SellerDashboard: React.FC = () => {
               <div className="flex items-center mb-4">
                 <FiShoppingCart className="w-6 h-6 text-orange-500 mr-3" />
                 <h3 className="text-lg font-semibold">Order Management</h3>
-              </div>
+                  </div>
               <p className="text-gray-600">Process orders efficiently and track shipping status</p>
-            </div>
+                  </div>
             
             <div className="bg-gray-50 p-6 rounded-lg">
               <div className="flex items-center mb-4">
                 <FiBarChart className="w-6 h-6 text-orange-500 mr-3" />
                 <h3 className="text-lg font-semibold">Analytics Dashboard</h3>
-              </div>
+                  </div>
               <p className="text-gray-600">Get detailed insights into your sales and customer behavior</p>
-            </div>
+                  </div>
             
             <div className="bg-gray-50 p-6 rounded-lg">
               <div className="flex items-center mb-4">
                 <FiDollarSign className="w-6 h-6 text-orange-500 mr-3" />
                 <h3 className="text-lg font-semibold">Payment Processing</h3>
-              </div>
+                  </div>
               <p className="text-gray-600">Secure payment processing with multiple payment methods</p>
             </div>
             
@@ -316,10 +314,10 @@ const SellerDashboard: React.FC = () => {
               <div className="flex items-center mb-4">
                 <FiUsers className="w-6 h-6 text-orange-500 mr-3" />
                 <h3 className="text-lg font-semibold">Customer Support</h3>
-              </div>
+                    </div>
               <p className="text-gray-600">24/7 customer support for both sellers and buyers</p>
-            </div>
-            
+                  </div>
+
             <div className="bg-gray-50 p-6 rounded-lg">
               <div className="flex items-center mb-4">
                 <FiSettings className="w-6 h-6 text-orange-500 mr-3" />
@@ -327,8 +325,8 @@ const SellerDashboard: React.FC = () => {
               </div>
               <p className="text-gray-600">Quick and easy setup process to get you selling fast</p>
             </div>
-          </div>
-        </div>
+                    </div>
+                  </div>
       </section>
 
       {/* CTA Section */}
@@ -348,8 +346,8 @@ const SellerDashboard: React.FC = () => {
             <button className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-orange-500 transition-colors">
               Contact Sales
             </button>
-          </div>
-        </div>
+                    </div>
+                    </div>
       </section>
 
       {/* Footer */}
@@ -364,8 +362,8 @@ const SellerDashboard: React.FC = () => {
                 <li><Link to="/fulfillment" className="hover:text-white">Fulfillment</Link></li>
                 <li><Link to="/advertising" className="hover:text-white">Advertising</Link></li>
               </ul>
-            </div>
-            
+                  </div>
+
             <div>
               <h3 className="text-lg font-semibold mb-4">Support</h3>
               <ul className="space-y-2 text-gray-400">
@@ -384,7 +382,7 @@ const SellerDashboard: React.FC = () => {
                 <li><Link to="/partners" className="hover:text-white">Partners</Link></li>
                 <li><Link to="/api" className="hover:text-white">API</Link></li>
               </ul>
-            </div>
+                  </div>
             
             <div>
               <h3 className="text-lg font-semibold mb-4">Legal</h3>
@@ -400,7 +398,7 @@ const SellerDashboard: React.FC = () => {
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
             <p>&copy; 2024 GoSeller. All rights reserved.</p>
           </div>
-        </div>
+      </div>
       </footer>
     </div>
   );
