@@ -3,9 +3,7 @@ import {
   FiUpload,
   FiX,
   FiPlus,
-  FiTrash2,
-  FiSave,
-  FiEye
+  FiSave
 } from 'react-icons/fi';
 
 interface ProductFormData {
@@ -69,7 +67,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     }
   });
 
-  const [errors, setErrors] = useState<Partial<ProductFormData>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [newTag, setNewTag] = useState('');
 
   const categories = [
@@ -98,13 +96,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
     'Jewelry & Accessories': ['Necklaces', 'Rings', 'Earrings', 'Watches', 'Bracelets']
   };
 
-  const shippingClasses = [
-    'standard',
-    'express',
-    'premium',
-    'economy'
-  ];
-
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -113,10 +104,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
     
     // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
   };
 
@@ -158,7 +150,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<ProductFormData> = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) newErrors.name = 'Product name is required';
     if (!formData.description.trim()) newErrors.description = 'Product description is required';

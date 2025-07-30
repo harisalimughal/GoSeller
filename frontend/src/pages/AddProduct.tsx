@@ -10,8 +10,6 @@ import {
   FiSave,
   FiX,
   FiPlus,
-  FiEye,
-  FiEyeOff,
   FiUpload,
   FiTrash2,
   FiCheckCircle,

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiPackage,
@@ -20,7 +20,6 @@ import {
   FiSettings,
   FiUpload,
   FiDownload,
-  FiFilter,
   FiSearch
 } from 'react-icons/fi';
 
@@ -58,9 +57,7 @@ interface SQLVerification {
 }
 
 const StoreDashboard: React.FC = () => {
-  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
-  const [showAddProduct, setShowAddProduct] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 

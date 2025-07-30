@@ -2,17 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  FiUser,
-  FiMail,
-  FiPhone,
-  FiMapPin,
   FiShield,
   FiCheckCircle,
   FiArrowRight,
   FiUpload,
   FiEye,
-  FiEyeOff,
-  FiLock
+  FiEyeOff
 } from 'react-icons/fi';
 
 interface RegistrationForm {

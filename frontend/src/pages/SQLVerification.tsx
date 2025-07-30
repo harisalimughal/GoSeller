@@ -8,15 +8,9 @@ import {
   FiXCircle,
   FiUpload,
   FiFileText,
-  FiCamera,
   FiMapPin,
-  FiCalendar,
   FiArrowRight,
-  FiAlertCircle,
-  FiInfo,
-  FiDownload,
-  FiEye,
-  FiEdit
+  FiInfo
 } from 'react-icons/fi';
 
 interface VerificationStep {
@@ -39,7 +33,7 @@ interface SQLLevel {
 
 const SQLVerification: React.FC = () => {
   const [activeStep, setActiveStep] = useState('pss');
-  const [currentLevel, setCurrentLevel] = useState<'Free' | 'Basic' | 'Normal' | 'High' | 'VIP'>('Free');
+  const [currentLevel] = useState<'Free' | 'Basic' | 'Normal' | 'High' | 'VIP'>('Free');
   const [targetLevel, setTargetLevel] = useState<'Basic' | 'Normal' | 'High' | 'VIP'>('Basic');
 
   const verificationSteps: VerificationStep[] = [
