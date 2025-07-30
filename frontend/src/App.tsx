@@ -9,7 +9,7 @@ import Products from './pages/Products';
 import Orders from './pages/Orders';
 import Customers from './pages/Customers';
 import Analytics from './pages/Analytics';
-
+import SellerDashboard from './pages/SellerDashboard';
 import Layout from './components/Layout';
 import './styles/HomePage.css';
 
@@ -32,8 +32,7 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-            <Route path="/seller-dashboard" element={<div style={{padding: '20px', fontSize: '24px', color: 'blue'}}>🔵 Seller Dashboard Test - Current URL: {window.location.href}</div>} />
-            <Route path="/seller/:type" element={<div style={{padding: '20px', fontSize: '24px', color: 'purple'}}>🟣 Seller Parameterized Test - Current URL: {window.location.href}</div>} />
+            <Route path="/seller-dashboard" element={<SellerDashboard />} />
             <Route path="/test" element={<div style={{padding: '20px', fontSize: '24px', color: 'green'}}>✅ Test route is working! Current URL: {window.location.href}</div>} />
             <Route path="/products" element={
               // <ProtectedRoute>
