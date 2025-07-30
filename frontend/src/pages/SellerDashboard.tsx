@@ -123,9 +123,9 @@ const SellerDashboard: React.FC = () => {
               Join thousands of successful sellers and reach millions of customers worldwide
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors">
+              <Link to="/seller-registration" className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors">
                 Start Selling Today
-              </button>
+              </Link>
               <button className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-orange-500 transition-colors">
                 Learn More
               </button>
@@ -340,15 +340,15 @@ const SellerDashboard: React.FC = () => {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Join thousands of successful sellers and start your journey to business success
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/seller-registration" className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center">
               Start Selling Now
               <FiArrowRight className="ml-2" />
-            </button>
+            </Link>
             <button className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-orange-500 transition-colors">
               Contact Sales
             </button>
-                    </div>
+          </div>
                     </div>
       </section>
 

@@ -10,6 +10,10 @@ import Orders from './pages/Orders';
 import Customers from './pages/Customers';
 import Analytics from './pages/Analytics';
 import SellerDashboard from './pages/SellerDashboard';
+import SellerRegistration from './pages/SellerRegistration';
+import StoreDashboard from './pages/StoreDashboard';
+import SQLVerification from './pages/SQLVerification';
+import AddProduct from './pages/AddProduct';
 import Layout from './components/Layout';
 import './styles/HomePage.css';
 
@@ -33,6 +37,10 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/seller-dashboard" element={<SellerDashboard />} />
+            <Route path="/seller-registration" element={<SellerRegistration />} />
+            <Route path="/store-dashboard" element={<StoreDashboard />} />
+            <Route path="/verification" element={<SQLVerification />} />
+            <Route path="/add-product" element={<AddProduct />} />
             <Route path="/test" element={<div style={{padding: '20px', fontSize: '24px', color: 'green'}}>✅ Test route is working! Current URL: {window.location.href}</div>} />
             <Route path="/products" element={
               // <ProtectedRoute>
