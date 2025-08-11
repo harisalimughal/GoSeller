@@ -314,7 +314,7 @@ const SQLVerification: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const preview = e.target?.result as string;
-      console.log('File preview generated for:', documentKey);
+      console.log('preview generated for:', documentKey);
       setDocuments(prev => ({
         ...prev,
         [documentKey]: { file, preview, type: file.type }
