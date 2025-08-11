@@ -152,7 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'AUTH_FAILURE',
-        payload: error.response?.data?.message || 'Login failed',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Login failed',
       });
     }
   };
@@ -179,7 +179,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'AUTH_FAILURE',
-        payload: error.response?.data?.message || 'Registration failed',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Registration failed',
       });
     }
   };
@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'AUTH_FAILURE',
-        payload: error.response?.data?.message || 'Profile update failed',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Profile update failed',
       });
     }
   };

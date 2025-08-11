@@ -1,14 +1,107 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const multer = require('multer');
 const Seller = require('../models/Seller');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const { catchAsync } = require('../utils/catchAsync');
-const { ApiError } = require('../utils/ApiError');
-const { ApiResponse } = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
+const ApiResponse = require('../utils/ApiResponse');
+const { sellerAuth } = require('../middleware/sellerAuth');
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
+
+// ========================================
+// SELLER AUTHENTICATION
+// ========================================
+
+// Seller login
+router.post('/login', [
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('password').notEmpty().withMessage('Password is required')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const formattedErrors = errors.array().map(error => ({
+      field: error.path,
+      message: error.msg,
+      value: error.value
+    }));
+    
+    throw new ApiError(400, 'Please check the following fields:', formattedErrors);
+  }
+
+  const { email, password } = req.body;
+
+  // Find seller by email
+  const seller = await Seller.findOne({ email }).select('+password');
+  if (!seller) {
+    throw new ApiError(401, 'Invalid email or password');
+  }
+
+  // Check if seller is active
+  if (!seller.isActive) {
+    throw new ApiError(401, 'Your account has been deactivated. Please contact support.');
+  }
+
+  // Check if seller is locked
+  if (seller.isLocked()) {
+    throw new ApiError(423, 'Your account has been temporarily locked due to multiple failed login attempts. Please try again later.');
+  }
+
+  // Verify password
+  const isPasswordValid = await seller.comparePassword(password);
+  if (!isPasswordValid) {
+    // Increment login attempts
+    await seller.incLoginAttempts();
+    throw new ApiError(401, 'Invalid email or password');
+  }
+
+  // Reset login attempts on successful login
+  await seller.resetLoginAttempts();
+
+  // Generate JWT token
+  const jwt = require('jsonwebtoken');
+  const token = jwt.sign(
+    { 
+      sellerId: seller._id, 
+      email: seller.email,
+      businessName: seller.businessName,
+      sqlLevel: seller.sqlLevel || 'Free'
+    },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '7d' }
+  );
+
+  res.json(new ApiResponse(200, 'Seller login successful', {
+    seller: {
+      id: seller._id,
+      businessName: seller.businessName,
+      email: seller.email,
+      status: seller.status,
+      verificationStatus: seller.verificationStatus,
+      sqlLevel: seller.sqlLevel || 'Free'
+    },
+    token
+  }));
+}));
+
+// Seller logout
+router.post('/logout', catchAsync(async (req, res) => {
+  // For JWT tokens, logout is typically handled client-side by removing the token
+  // But we can add server-side logic here if needed (e.g., blacklisting tokens)
+  
+  res.json(new ApiResponse(200, 'Seller logout successful', {}));
+}));
 
 // ========================================
 // SELLER REGISTRATION & PROFILE
@@ -26,7 +119,14 @@ router.post('/register', [
 ], catchAsync(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    throw new ApiError(400, 'Validation failed', errors.array());
+    // Format validation errors for better user experience
+    const formattedErrors = errors.array().map(error => ({
+      field: error.path,
+      message: error.msg,
+      value: error.value
+    }));
+    
+    throw new ApiError(400, 'Please check the following fields:', formattedErrors);
   }
 
   const {
@@ -42,22 +142,30 @@ router.post('/register', [
     socialMedia
   } = req.body;
 
-  // Check if seller already exists
-  const existingSeller = await Seller.findOne({
-    $or: [{ email }, { phone }]
-  });
+  // Check if seller already exists with more specific error messages
+  const existingSellerByEmail = await Seller.findOne({ email });
+  const existingSellerByPhone = await Seller.findOne({ phone });
 
-  if (existingSeller) {
-    throw new ApiError(409, 'Seller already exists with this email or phone');
+  if (existingSellerByEmail && existingSellerByPhone) {
+    throw new ApiError(409, 'A seller account already exists with both this email and phone number. Please use different credentials or contact support for assistance.');
+  } else if (existingSellerByEmail) {
+    throw new ApiError(409, 'A seller account already exists with this email address. Please use a different email or try logging in if you already have an account.');
+  } else if (existingSellerByPhone) {
+    throw new ApiError(409, 'A seller account already exists with this phone number. Please use a different phone number or try logging in if you already have an account.');
   }
 
   // Create seller
   const seller = new Seller({
     userId: req.user?.userId || 'temp_user_id',
+    name: businessName, // Required field
+    email,
+    password: 'temp_password_' + Date.now(), // Required field - will be updated later
+    contact: phone, // Required field
+    location: `${address.city || ''}, ${address.state || ''}, ${address.country || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, ''),
+    sellerType: 'store', // Required field
+    shopName: businessName, // Required field
     businessName,
     businessType,
-    email,
-    phone,
     address,
     documents,
     bankDetails,
@@ -68,7 +176,23 @@ router.post('/register', [
     verificationStatus: 'pending'
   });
 
-  await seller.save();
+  try {
+    await seller.save();
+  } catch (saveError) {
+    console.error('Seller save error:', saveError);
+    
+    // Handle specific database errors
+    if (saveError.code === 11000) {
+      // Duplicate key error - this shouldn't happen since we checked above, but handle it anyway
+      const field = Object.keys(saveError.keyValue)[0];
+      throw new ApiError(409, `A seller account already exists with this ${field}. Please use different credentials.`);
+    } else if (saveError.name === 'ValidationError') {
+      const validationErrors = Object.values(saveError.errors).map(err => err.message).join(', ');
+      throw new ApiError(400, `Validation failed: ${validationErrors}`);
+    } else {
+      throw new ApiError(500, 'Failed to create seller account. Please try again or contact support.');
+    }
+  }
 
   res.status(201).json(new ApiResponse(201, 'Seller registration successful', {
     seller: {
@@ -81,22 +205,48 @@ router.post('/register', [
 }));
 
 // Get seller profile
-router.get('/profile', catchAsync(async (req, res) => {
-  const seller = await Seller.findOne({ userId: req.user?.userId })
-    .populate('userId', 'firstName lastName email phone')
+router.get('/profile', sellerAuth, catchAsync(async (req, res) => {
+  console.log('Profile request received');
+  console.log('Authenticated seller ID:', req.seller._id);
+
+  const seller = await Seller.findById(req.seller._id)
     .populate('categories', 'name');
 
   if (!seller) {
     throw new ApiError(404, 'Seller profile not found');
   }
 
+  console.log('Found seller:', {
+    id: seller._id,
+    name: seller.name,
+    serviceSQL_level: seller.serviceSQL_level,
+    productSQL_level: seller.productSQL_level
+  });
+
   res.json(new ApiResponse(200, 'Seller profile retrieved successfully', {
     seller
   }));
 }));
 
+// Get current seller verification status
+router.get('/verification-status', sellerAuth, catchAsync(async (req, res) => {
+  const seller = await Seller.findById(req.seller._id)
+    .select('serviceVerification serviceSQL_level productSQL_level sqlLevelUpdatedAt');
+
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  res.json(new ApiResponse(200, 'Verification status retrieved successfully', {
+    serviceVerification: seller.serviceVerification,
+    serviceSQL_level: seller.serviceSQL_level,
+    productSQL_level: seller.productSQL_level,
+    sqlLevelUpdatedAt: seller.sqlLevelUpdatedAt
+  }));
+}));
+
 // Update seller profile
-router.put('/profile', [
+router.put('/profile', sellerAuth, [
   body('businessName').optional().trim().notEmpty(),
   body('description').optional().trim(),
   body('address').optional().isObject(),
@@ -108,7 +258,7 @@ router.put('/profile', [
     throw new ApiError(400, 'Validation failed', errors.array());
   }
 
-  const seller = await Seller.findOne({ userId: req.user?.userId });
+  const seller = await Seller.findById(req.seller._id);
   if (!seller) {
     throw new ApiError(404, 'Seller profile not found');
   }
@@ -589,6 +739,267 @@ router.put('/:id/approve', [
   }));
 }));
 
+// ========================================
+// DOCUMENT SUBMISSION & VERIFICATION
+// ========================================
+
+// Submit documents for verification (separate submissions for PSS/EDR/EMO)
+router.post('/submit-documents/:section', sellerAuth, upload.fields([
+  { name: 'pss', maxCount: 1 },
+  { name: 'edr', maxCount: 1 },
+  { name: 'emo', maxCount: 1 },
+  { name: 'businessLicense', maxCount: 1 },
+  { name: 'cnic', maxCount: 1 },
+  { name: 'addressProof', maxCount: 1 },
+  { name: 'bankStatement', maxCount: 1 }
+]), catchAsync(async (req, res) => {
+    console.log(`Document submission request received for section: ${req.params.section}`);
+    console.log('Files received:', req.files);
+    console.log('Authenticated seller:', req.seller._id);
+  
+    try {
+      const { section } = req.params;
+      
+      // Validate section
+      if (!['pss', 'edr', 'emo'].includes(section)) {
+        throw new ApiError(400, 'Invalid verification section. Must be pss, edr, or emo');
+      }
+      
+      // Use authenticated seller
+      const seller = req.seller;
+
+      const uploadedDocs = {};
+      const cloudinaryService = require('../services/cloudinaryService');
+
+      // Process each uploaded file
+      for (const [fieldName, files] of Object.entries(req.files || {})) {
+        if (files && files.length > 0) {
+          const file = files[0];
+          
+          try {
+            console.log(`Uploading ${fieldName} to Cloudinary...`);
+            const result = await cloudinaryService.uploadFile(file.buffer, {
+              folder: `seller-documents/${section}`,
+              public_id: `${sellerId}_${fieldName}_${Date.now()}`,
+              resource_type: 'auto'
+            });
+            console.log(`Upload successful for ${fieldName}:`, result.url);
+
+            uploadedDocs[fieldName] = result.url;
+          } catch (uploadError) {
+            console.error(`Failed to upload ${fieldName}:`, uploadError);
+            throw new ApiError(500, `Failed to upload ${fieldName}: ${uploadError.message}`);
+          }
+        }
+      }
+
+      // Map uploaded documents to the correct schema structure
+      const kycUpdate = {};
+      const serviceVerificationUpdate = {};
+      
+      // Handle section-specific documents
+      if (section === 'pss') {
+        if (uploadedDocs.pss) {
+          kycUpdate['kyc_docs.pss'] = uploadedDocs.pss;
+        }
+        if (uploadedDocs.cnic) {
+          kycUpdate['kyc_docs.cnic.frontImage'] = uploadedDocs.cnic;
+        }
+        serviceVerificationUpdate[`serviceVerification.pss`] = {
+          status: 'pending',
+          submittedAt: new Date()
+        };
+      } else if (section === 'edr') {
+        if (uploadedDocs.edr) {
+          kycUpdate['kyc_docs.edr'] = uploadedDocs.edr;
+        }
+        if (uploadedDocs.businessLicense) {
+          kycUpdate['kyc_docs.businessLicense.image'] = uploadedDocs.businessLicense;
+        }
+        serviceVerificationUpdate[`serviceVerification.edr`] = {
+          status: 'pending',
+          submittedAt: new Date()
+        };
+      } else if (section === 'emo') {
+        if (uploadedDocs.emo) {
+          kycUpdate['kyc_docs.emo'] = uploadedDocs.emo;
+        }
+        if (uploadedDocs.addressProof) {
+          kycUpdate['kyc_docs.addressProof.image'] = uploadedDocs.addressProof;
+        }
+        if (uploadedDocs.bankStatement) {
+          kycUpdate['kyc_docs.bankStatement.image'] = uploadedDocs.bankStatement;
+        }
+        serviceVerificationUpdate[`serviceVerification.emo`] = {
+          status: 'pending',
+          submittedAt: new Date()
+        };
+      }
+
+      // Combine all updates
+      const allUpdates = { ...kycUpdate, ...serviceVerificationUpdate };
+
+      // Update seller with document URLs and verification status
+      await Seller.findByIdAndUpdate(
+        sellerId,
+        { 
+          $set: allUpdates,
+          $currentDate: { updatedAt: true }
+        },
+        { new: true, runValidators: false }
+      );
+
+      console.log(`${section.toUpperCase()} documents saved successfully for seller:`, sellerId);
+      console.log('Documents uploaded:', Object.keys(uploadedDocs));
+
+      res.json(new ApiResponse(200, `${section.toUpperCase()} documents submitted successfully`, {
+        sellerId: sellerId,
+        section: section,
+        documentsSubmitted: Object.keys(uploadedDocs),
+        submittedAt: new Date()
+      }));
+    } catch (error) {
+      console.error(`Error in ${req.params.section} document submission:`, error);
+      throw new ApiError(500, `Failed to submit ${req.params.section} documents: ` + error.message);
+    }
+}));
+
+// Submit documents for verification (legacy route - all documents at once)
+router.post('/submit-documents', sellerAuth, upload.fields([
+  { name: 'pss', maxCount: 1 },
+  { name: 'edr', maxCount: 1 },
+  { name: 'emo', maxCount: 1 },
+  { name: 'businessLicense', maxCount: 1 },
+  { name: 'cnic', maxCount: 1 },
+  { name: 'addressProof', maxCount: 1 },
+  { name: 'bankStatement', maxCount: 1 }
+]), catchAsync(async (req, res) => {
+    console.log('Document submission request received');
+    console.log('Authenticated seller:', req.seller._id);
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Files received:', req.files);
+    console.log('Cloudinary config check:', {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET',
+      api_secret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET'
+    });  try {
+    const { submittedAt } = req.body;
+    
+    // Use authenticated seller
+    const seller = req.seller;
+
+    const uploadedDocs = {};
+    const cloudinaryService = require('../services/cloudinaryService');
+
+    // Process each uploaded file
+    for (const [fieldName, files] of Object.entries(req.files || {})) {
+      if (files && files.length > 0) {
+        const file = files[0];
+        
+        try {
+          // Upload to Cloudinary
+          console.log(`Uploading ${fieldName} to Cloudinary...`);
+          const result = await cloudinaryService.uploadFile(file.buffer, {
+            folder: 'seller-documents',
+            public_id: `${sellerId}_${fieldName}_${Date.now()}`,
+            resource_type: 'auto'
+          });
+          console.log(`Upload successful for ${fieldName}:`, result.url);
+
+          uploadedDocs[fieldName] = result.url; // Store just the URL string
+        } catch (uploadError) {
+          console.error(`Failed to upload ${fieldName}:`, uploadError);
+          throw new ApiError(500, `Failed to upload ${fieldName}: ${uploadError.message}`);
+        }
+      }
+    }
+
+    // Map uploaded documents to the correct schema structure
+    const kycUpdate = {};
+    const verificationUpdate = {};
+    
+    if (uploadedDocs.cnic) {
+      kycUpdate['kyc_docs.cnic.frontImage'] = uploadedDocs.cnic;
+    }
+    if (uploadedDocs.businessLicense) {
+      kycUpdate['kyc_docs.businessLicense.image'] = uploadedDocs.businessLicense;
+    }
+    if (uploadedDocs.addressProof) {
+      kycUpdate['kyc_docs.addressProof.image'] = uploadedDocs.addressProof;
+    }
+    if (uploadedDocs.bankStatement) {
+      kycUpdate['kyc_docs.bankStatement.image'] = uploadedDocs.bankStatement;
+    }
+    if (uploadedDocs.pss) {
+      kycUpdate['kyc_docs.pss'] = uploadedDocs.pss;
+      verificationUpdate['productVerification.pss'] = {
+        status: 'pending',
+        submittedAt: new Date(),
+        documentUrl: uploadedDocs.pss
+      };
+    }
+    if (uploadedDocs.edr) {
+      kycUpdate['kyc_docs.edr'] = uploadedDocs.edr;
+      verificationUpdate['productVerification.edr'] = {
+        status: 'pending',
+        submittedAt: new Date(),
+        documentUrl: uploadedDocs.edr
+      };
+    }
+    if (uploadedDocs.emo) {
+      kycUpdate['kyc_docs.emo'] = uploadedDocs.emo;
+      verificationUpdate['productVerification.emo'] = {
+        status: 'pending',
+        submittedAt: new Date(),
+        documentUrl: uploadedDocs.emo
+      };
+    }
+
+    // Combine all updates
+    const allUpdates = { ...kycUpdate, ...verificationUpdate };
+
+    // Update seller with document URLs and verification status
+    await Seller.findByIdAndUpdate(
+      sellerId,
+      { 
+        $set: allUpdates,
+        $currentDate: { updatedAt: true }
+      },
+      { new: true, runValidators: false }
+    );
+
+    console.log('Documents saved successfully for seller:', sellerId);
+    console.log('Documents uploaded:', Object.keys(uploadedDocs));
+
+    res.json(new ApiResponse(200, 'Documents submitted successfully', {
+      sellerId: sellerId,
+      documentsSubmitted: Object.keys(uploadedDocs),
+      submittedAt: new Date()
+    }));
+    } catch (error) {
+      console.error('Error in document submission:', error);
+      throw new ApiError(500, 'Failed to submit documents: ' + error.message);
+    }
+}));
+
+// Get seller verification status
+router.get('/verification-status/:sellerId', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+
+  const seller = await Seller.findById(sellerId);
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  res.json(new ApiResponse(200, 'Verification status retrieved successfully', {
+    sellerId: seller._id,
+    productVerification: seller.productVerification,
+    serviceVerification: seller.serviceVerification,
+    kyc_docs: seller.kyc_docs,
+    verified: seller.verified
+  }));
+}));
+
 // Get top performing sellers
 router.get('/top-performing', catchAsync(async (req, res) => {
   const { limit = 10, period = '30d' } = req.query;
@@ -652,6 +1063,104 @@ router.get('/top-performing', catchAsync(async (req, res) => {
     topSellers,
     period
   }));
+}));
+
+// Check verification status and trigger auto-upgrade
+router.get('/check-upgrade', catchAsync(async (req, res) => {
+  try {
+    const sellerToken = req.headers.authorization?.split(' ')[1];
+    if (!sellerToken) {
+      throw new ApiError(401, 'No seller token provided');
+    }
+
+    // Extract seller ID from token
+    const payload = JSON.parse(Buffer.from(sellerToken.split('.')[1], 'base64').toString());
+    const sellerId = payload.sellerId;
+
+    if (!sellerId) {
+      throw new ApiError(401, 'Invalid seller token');
+    }
+
+    const seller = await Seller.findById(sellerId);
+    if (!seller) {
+      throw new ApiError(404, 'Seller not found');
+    }
+
+    console.log('Checking seller:', sellerId);
+    console.log('Current SQL levels:', {
+      service: seller.serviceSQL_level,
+      product: seller.productSQL_level
+    });
+    console.log('Service verification:', seller.serviceVerification);
+
+    // Manual upgrade check
+    const serviceVerification = seller.serviceVerification || {};
+    const pssApproved = serviceVerification.pss?.status === 'approved';
+    const edrApproved = serviceVerification.edr?.status === 'approved';
+    const emoApproved = serviceVerification.emo?.status === 'approved';
+
+    console.log('Verification status:', { pssApproved, edrApproved, emoApproved });
+
+    let newServiceLevel = 'Free';
+    let newProductLevel = 'Free';
+
+    // Determine new SQL levels based on verification status
+    if (pssApproved && edrApproved && emoApproved) {
+      // All three verified → High level
+      newServiceLevel = 'High';
+      newProductLevel = 'High';
+    } else if (pssApproved && edrApproved) {
+      // PSS + EDR verified → Normal level
+      newServiceLevel = 'Normal';
+      newProductLevel = 'Normal';
+    } else if (pssApproved) {
+      // Only PSS verified → Basic level
+      newServiceLevel = 'Basic';
+      newProductLevel = 'Basic';
+    }
+
+    console.log('Calculated new levels:', { newServiceLevel, newProductLevel });
+
+    // Update levels if they have changed
+    if (newServiceLevel !== seller.serviceSQL_level || newProductLevel !== seller.productSQL_level) {
+      const updatedSeller = await Seller.findByIdAndUpdate(
+        sellerId,
+        {
+          $set: {
+            serviceSQL_level: newServiceLevel,
+            productSQL_level: newProductLevel,
+            sqlLevelUpdatedAt: new Date()
+          }
+        },
+        { new: true, runValidators: false }
+      );
+
+      console.log(`Upgraded seller ${sellerId} SQL levels: Service=${newServiceLevel}, Product=${newProductLevel}`);
+
+      res.json(new ApiResponse(200, 'SQL levels upgraded successfully', {
+        oldLevels: {
+          service: seller.serviceSQL_level,
+          product: seller.productSQL_level
+        },
+        newLevels: {
+          service: newServiceLevel,
+          product: newProductLevel
+        },
+        seller: updatedSeller
+      }));
+    } else {
+      res.json(new ApiResponse(200, 'SQL levels are already correct', {
+        currentLevels: {
+          service: seller.serviceSQL_level,
+          product: seller.productSQL_level
+        },
+        verificationStatus: { pssApproved, edrApproved, emoApproved }
+      }));
+    }
+  } catch (error) {
+    console.error('Error in check-upgrade:', error);
+    throw new ApiError(500, 'Failed to check/upgrade SQL levels: ' + error.message);
+  }
 }));
 
 module.exports = router;

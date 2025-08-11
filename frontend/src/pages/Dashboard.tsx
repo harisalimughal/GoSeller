@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { CATEGORIES } from '../config/categories';
 
 const Dashboard = () => {
   // Sample data for charts
@@ -14,9 +15,15 @@ const Dashboard = () => {
 
   const productData = [
     { name: 'Electronics', value: 400 },
-    { name: 'Clothing', value: 300 },
+    { name: 'Fashion', value: 300 },
     { name: 'Books', value: 300 },
     { name: 'Home', value: 200 },
+    { name: 'Sports', value: 150 },
+    { name: 'Beauty', value: 250 },
+    { name: 'Grocery', value: 180 },
+    { name: 'Health', value: 120 },
+    { name: 'Automotive', value: 90 },
+    { name: 'Other', value: 60 },
   ]
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042']

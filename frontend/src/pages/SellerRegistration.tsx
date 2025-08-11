@@ -9,6 +9,7 @@ import {
   FiEye,
   FiEyeOff
 } from 'react-icons/fi';
+import { sellerRegistrationAPI } from '../services/api';
 
 interface RegistrationForm {
   // Personal Information
@@ -29,11 +30,18 @@ interface RegistrationForm {
   zipCode: string;
   country: string;
   
+  // Seller Category Information
+  sellerCategory: 'Company' | 'Dealer' | 'Wholesaler' | 'Trader' | 'Storekeeper';
+  parentCompanyId?: string;
+  distributionArea: 'National' | 'Regional' | 'Zonal' | 'Local' | 'Area-specific';
+  authorizedTerritories: string;
+  
   // Store Details
   storeDescription: string;
   storeCategory: string;
   storeLogo: File | null;
   storeBanner: File | null;
+  businessDocuments: File[];
   
   // SQL Quality Level
   sqlLevel: 'Free' | 'Basic' | 'Normal' | 'High' | 'VIP';
@@ -49,6 +57,9 @@ const SellerRegistration: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [successData, setSuccessData] = useState<{ sellerId: string; sqlLevel: string } | null>(null);
   const [formData, setFormData] = useState<RegistrationForm>({
     firstName: '',
     lastName: '',
@@ -64,10 +75,14 @@ const SellerRegistration: React.FC = () => {
     state: '',
     zipCode: '',
     country: '',
+    sellerCategory: 'Storekeeper',
+    distributionArea: 'Local',
+    authorizedTerritories: '',
     storeDescription: '',
     storeCategory: '',
     storeLogo: null,
     storeBanner: null,
+    businessDocuments: [],
     sqlLevel: 'Free',
     pssVerified: false,
     edrVerified: false,
@@ -105,6 +120,107 @@ const SellerRegistration: React.FC = () => {
     'Specialty Store'
   ];
 
+  const sellerCategories = [
+    {
+      name: 'Company',
+      description: 'Manufacturers or official product owners who produce goods under their own brand.',
+      keyFeatures: [
+        'Can monitor all downstream supply chain',
+        'Highest level of product control',
+        'Can register dealers, wholesalers, etc.'
+      ],
+      capabilities: {
+        productListing: true,
+        priceControl: true,
+        orderHandling: false,
+        franchiseIncomeContribution: true,
+        supplyChainFlowMonitoring: true,
+        bulkOrderTools: true,
+        dashboardRoleAccess: 'Full'
+      }
+    },
+    {
+      name: 'Dealer',
+      description: 'Direct representatives of the manufacturing company or major stockists.',
+      keyFeatures: [
+        'Works directly under company',
+        'Can manage multiple wholesalers',
+        'Handles regional distribution'
+      ],
+      capabilities: {
+        productListing: true,
+        priceControl: true,
+        orderHandling: false,
+        franchiseIncomeContribution: true,
+        supplyChainFlowMonitoring: true,
+        bulkOrderTools: true,
+        dashboardRoleAccess: 'Regional'
+      }
+    },
+    {
+      name: 'Wholesaler',
+      description: 'Buys products in bulk from dealers or companies and sells to traders.',
+      keyFeatures: [
+        'Mid-level distributor',
+        'Manages stock and pricing',
+        'May serve multiple areas'
+      ],
+      capabilities: {
+        productListing: true,
+        priceControl: true,
+        orderHandling: false,
+        franchiseIncomeContribution: true,
+        supplyChainFlowMonitoring: true,
+        bulkOrderTools: true,
+        dashboardRoleAccess: 'Zonal'
+      }
+    },
+    {
+      name: 'Trader',
+      description: 'Purchases from wholesalers and supplies to local shops.',
+      keyFeatures: [
+        'Works on local demand',
+        'Can manage small product quantities',
+        'Often limited by region'
+      ],
+      capabilities: {
+        productListing: true,
+        priceControl: true,
+        orderHandling: false,
+        franchiseIncomeContribution: true,
+        supplyChainFlowMonitoring: true,
+        bulkOrderTools: true,
+        dashboardRoleAccess: 'Local'
+      }
+    },
+    {
+      name: 'Storekeeper',
+      description: 'Final seller to customers through GoSellr platform.',
+      keyFeatures: [
+        'Registers store on GoSellr',
+        'Manages orders, deliveries, and customer complaints',
+        'Can be verified under SQL levels (Free → VIP)'
+      ],
+      capabilities: {
+        productListing: true,
+        priceControl: false,
+        orderHandling: true,
+        franchiseIncomeContribution: true,
+        supplyChainFlowMonitoring: false,
+        bulkOrderTools: false,
+        dashboardRoleAccess: 'Area-wise'
+      }
+    }
+  ];
+
+  const distributionAreas = [
+    { value: 'National', label: 'National' },
+    { value: 'Regional', label: 'Regional' },
+    { value: 'Zonal', label: 'Zonal' },
+    { value: 'Local', label: 'Local' },
+    { value: 'Area-specific', label: 'Area-specific' }
+  ];
+
   const handleInputChange = (field: keyof RegistrationForm, value: string | File | boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -119,6 +235,28 @@ const SellerRegistration: React.FC = () => {
         return newErrors;
       });
     }
+  };
+
+  const handleFileUpload = (field: 'storeLogo' | 'storeBanner' | 'businessDocuments', file: File | File[]) => {
+    if (field === 'businessDocuments') {
+      const files = Array.isArray(file) ? file : [file];
+      setFormData(prev => ({
+        ...prev,
+        businessDocuments: [...prev.businessDocuments, ...files]
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: file
+      }));
+    }
+  };
+
+  const removeDocument = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      businessDocuments: prev.businessDocuments.filter((_, i) => i !== index)
+    }));
   };
 
   const validateStep = (step: number): boolean => {
@@ -142,6 +280,10 @@ const SellerRegistration: React.FC = () => {
         break;
 
       case 2:
+        if (!formData.sellerCategory) newErrors.sellerCategory = 'Seller category is required';
+        break;
+
+      case 3:
         if (!formData.businessName.trim()) newErrors.businessName = 'Business name is required';
         if (!formData.businessType) newErrors.businessType = 'Business type is required';
         if (!formData.businessLicense.trim()) newErrors.businessLicense = 'Business license is required';
@@ -152,7 +294,7 @@ const SellerRegistration: React.FC = () => {
         if (!formData.country.trim()) newErrors.country = 'Country is required';
         break;
 
-      case 3:
+      case 4:
         if (!formData.storeDescription.trim()) newErrors.storeDescription = 'Store description is required';
         if (!formData.storeCategory) newErrors.storeCategory = 'Store category is required';
         break;
@@ -164,7 +306,7 @@ const SellerRegistration: React.FC = () => {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      if (currentStep < 3) {
+      if (currentStep < 4) {
         setCurrentStep(currentStep + 1);
       } else {
         handleSubmit();
@@ -181,41 +323,170 @@ const SellerRegistration: React.FC = () => {
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return;
 
+    setIsSubmitting(true);
     try {
-      // Here you would typically send the data to your backend
-      console.log('Submitting registration data:', formData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Navigate to store dashboard
-      navigate('/store-dashboard', { 
-        state: { 
-          storeId: 'store_' + Date.now(),
-          sqlLevel: formData.sqlLevel 
-        } 
+      const response = await sellerRegistrationAPI.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        businessName: formData.businessName,
+        businessType: formData.businessType,
+        businessLicense: formData.businessLicense,
+        businessAddress: formData.businessAddress,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: formData.country,
+        sellerCategory: formData.sellerCategory,
+        distributionArea: formData.distributionArea,
+        authorizedTerritories: formData.authorizedTerritories,
+        parentCompanyId: formData.parentCompanyId,
+        storeDescription: formData.storeDescription,
+        storeCategory: formData.storeCategory,
+        storeLogo: formData.storeLogo || undefined,
+        storeBanner: formData.storeBanner || undefined,
+        businessDocuments: formData.businessDocuments
       });
-    } catch (error) {
+
+      // Set success state and data
+      setSuccessData({
+        sellerId: response.seller.id,
+        sqlLevel: response.seller.sqlLevel
+      });
+      setIsSuccess(true);
+    } catch (error: any) {
       console.error('Registration failed:', error);
+      setErrors({
+        submit: error.response?.data?.error?.message || error.response?.data?.message || 'Registration failed. Please try again.'
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleFileUpload = (field: 'storeLogo' | 'storeBanner', file: File) => {
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      setErrors(prev => ({
-        ...prev,
-        [field]: 'File size must be less than 5MB'
-      }));
-      return;
+  const handleGoToDashboard = () => {
+    if (successData) {
+      navigate('/store-dashboard', { 
+        state: { 
+          sellerId: successData.sellerId,
+          sqlLevel: successData.sqlLevel 
+        } 
+      });
     }
-    
-    handleInputChange(field, file);
   };
+
+  // Success Message Component
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Link to="/" className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">G</span>
+                </div>
+                <span className="text-xl font-bold text-gray-900">GoSeller</span>
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="max-w-md w-full text-center"
+          >
+            {/* Success Icon */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="mx-auto w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mb-6"
+            >
+              <FiCheckCircle className="w-10 h-10 text-white" />
+            </motion.div>
+
+            {/* Success Message */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-2xl shadow-xl p-8 space-y-6"
+            >
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                🎉 Registration Successful!
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Welcome to GoSeller! Your seller account has been created successfully. 
+                You can now start managing your store and listing your products.
+              </p>
+
+              {/* Account Details */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-green-800 mb-2">Account Details</h3>
+                <div className="text-sm text-green-700 space-y-1">
+                  <p><span className="font-medium">Business Name:</span> {formData.businessName}</p>
+                  <p><span className="font-medium">Email:</span> {formData.email}</p>
+                  <p><span className="font-medium">Seller Category:</span> {formData.sellerCategory}</p>
+                  <p className="flex items-center">
+                    <span className="font-medium">SQL Level:</span> 
+                    <span className="ml-1">{successData?.sqlLevel || 'Free'}</span>
+                    {successData?.sqlLevel && successData.sqlLevel !== 'Free' && (
+                      <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Coming Soon
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-4">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleGoToDashboard}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 px-6 rounded-lg font-medium hover:from-green-600 hover:to-emerald-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                  <span>Go to Dashboard</span>
+                  <FiArrowRight className="w-5 h-5" />
+                </motion.button>
+
+                <Link
+                  to="/seller-login"
+                  className="block w-full bg-white border border-gray-300 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
+                >
+                  Sign In to Your Account
+                </Link>
+              </div>
+
+              {/* Additional Info */}
+              <div className="text-xs text-gray-500 space-y-2">
+                <p>
+                  💡 <strong>Next Steps:</strong> Complete your profile, add products, and start selling!
+                </p>
+                <p>
+                  📧 Check your email for verification and welcome instructions.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   const steps = [
     { number: 1, title: 'Personal Information', description: 'Your basic details' },
-    { number: 2, title: 'Business Information', description: 'Your business details' },
-    { number: 3, title: 'Store Setup', description: 'Configure your store' }
+    { number: 2, title: 'Seller Category', description: 'Choose your role' },
+    { number: 3, title: 'Business Information', description: 'Your business details' },
+    { number: 4, title: 'Store Setup', description: 'Configure your store' }
   ];
 
   return (
@@ -234,6 +505,7 @@ const SellerRegistration: React.FC = () => {
             <nav className="hidden md:flex items-center space-x-8">
               <Link to="/" className="text-gray-600 hover:text-gray-900">Home</Link>
               <Link to="/seller-dashboard" className="text-gray-600 hover:text-gray-900">Seller Dashboard</Link>
+              <Link to="/seller-login" className="text-gray-600 hover:text-gray-900">Sign In</Link>
               <Link to="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
             </nav>
           </div>
@@ -424,6 +696,106 @@ const SellerRegistration: React.FC = () => {
 
           {currentStep === 2 && (
             <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Seller Category Selection</h2>
+              
+              <div className="mb-6">
+                <p className="text-gray-600 mb-4">
+                  Choose your role in the supply chain. This will determine your capabilities and access levels.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                {sellerCategories.map((category) => (
+                  <div
+                    key={category.name}
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                      formData.sellerCategory === category.name
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleInputChange('sellerCategory', category.name)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                      {formData.sellerCategory === category.name && (
+                        <FiCheckCircle className="w-5 h-5 text-orange-500" />
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{category.description}</p>
+                    
+                    <div className="mb-3">
+                      <h4 className="text-xs font-semibold text-gray-700 mb-1">Key Features:</h4>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        {category.keyFeatures.map((feature, index) => (
+                          <li key={index} className="flex items-start">
+                            <span className="text-orange-500 mr-1">•</span>
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="border-t pt-3">
+                      <h4 className="text-xs font-semibold text-gray-700 mb-2">Capabilities:</h4>
+                      <div className="grid grid-cols-2 gap-1 text-xs">
+                        <div className={`p-1 rounded ${category.capabilities.productListing ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          Product Listing
+                        </div>
+                        <div className={`p-1 rounded ${category.capabilities.priceControl ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          Price Control
+                        </div>
+                        <div className={`p-1 rounded ${category.capabilities.orderHandling ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          Order Handling
+                        </div>
+                        <div className={`p-1 rounded ${category.capabilities.bulkOrderTools ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          Bulk Tools
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {formData.sellerCategory !== 'Company' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Distribution Area
+                    </label>
+                    <select
+                      value={formData.distributionArea}
+                      onChange={(e) => handleInputChange('distributionArea', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    >
+                      {distributionAreas.map((area) => (
+                        <option key={area.value} value={area.value}>{area.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Authorized Territories (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.authorizedTerritories}
+                      onChange={(e) => handleInputChange('authorizedTerritories', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="e.g., Karachi, Lahore, Islamabad"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {errors.sellerCategory && (
+                <p className="text-red-500 text-sm mt-1">{errors.sellerCategory}</p>
+              )}
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Business Information</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -577,7 +949,7 @@ const SellerRegistration: React.FC = () => {
             </div>
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Store Setup</h2>
               
@@ -627,9 +999,6 @@ const SellerRegistration: React.FC = () => {
                   {formData.storeLogo && (
                     <p className="text-green-600 text-sm mt-1">✓ {formData.storeLogo.name}</p>
                   )}
-                  {errors.storeLogo && (
-                    <p className="text-red-500 text-sm mt-1">{errors.storeLogo}</p>
-                  )}
                 </div>
 
                 <div className="md:col-span-2">
@@ -674,8 +1043,45 @@ const SellerRegistration: React.FC = () => {
                   {formData.storeBanner && (
                     <p className="text-green-600 text-sm mt-1">✓ {formData.storeBanner.name}</p>
                   )}
-                  {errors.storeBanner && (
-                    <p className="text-red-500 text-sm mt-1">{errors.storeBanner}</p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Business Documents
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <FiUpload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length > 0) handleFileUpload('businessDocuments', files);
+                      }}
+                      className="hidden"
+                      id="businessDocuments"
+                    />
+                    <label htmlFor="businessDocuments" className="cursor-pointer">
+                      <span className="text-orange-500 font-medium">Upload Documents</span>
+                      <span className="text-gray-500 text-sm block">Images, PDF up to 5MB each</span>
+                    </label>
+                  </div>
+                  {formData.businessDocuments.length > 0 && (
+                    <div className="mt-2">
+                      {formData.businessDocuments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded mb-1">
+                          <span className="text-sm text-gray-700">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeDocument(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -694,26 +1100,45 @@ const SellerRegistration: React.FC = () => {
                         <div className="font-semibold">Free</div>
                         <div className="text-gray-600">3 products</div>
                       </div>
-                      <div className="text-center p-2 bg-white rounded border">
+                      <div className="text-center p-2 bg-white rounded border relative">
                         <div className="font-semibold">Basic</div>
                         <div className="text-gray-600">10 products</div>
+                        <span className="absolute -top-1 -right-1 px-1 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                          Coming Soon
+                        </span>
                       </div>
-                      <div className="text-center p-2 bg-white rounded border">
+                      <div className="text-center p-2 bg-white rounded border relative">
                         <div className="font-semibold">Normal</div>
                         <div className="text-gray-600">50 products</div>
+                        <span className="absolute -top-1 -right-1 px-1 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                          Coming Soon
+                        </span>
                       </div>
-                      <div className="text-center p-2 bg-white rounded border">
+                      <div className="text-center p-2 bg-white rounded border relative">
                         <div className="font-semibold">High</div>
                         <div className="text-gray-600">Unlimited</div>
+                        <span className="absolute -top-1 -right-1 px-1 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                          Coming Soon
+                        </span>
                       </div>
-                      <div className="text-center p-2 bg-white rounded border">
+                      <div className="text-center p-2 bg-white rounded border relative">
                         <div className="font-semibold">VIP</div>
                         <div className="text-gray-600">Top ranking</div>
+                        <span className="absolute -top-1 -right-1 px-1 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                          Coming Soon
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {errors.submit && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{errors.submit}</p>
             </div>
           )}
 
@@ -733,10 +1158,20 @@ const SellerRegistration: React.FC = () => {
             
             <button
               onClick={handleNext}
-              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center"
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors flex items-center disabled:opacity-50"
             >
-              {currentStep === 3 ? 'Create Store' : 'Next'}
-              <FiArrowRight className="ml-2" />
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creating Store...
+                </>
+              ) : (
+                <>
+                  {currentStep === 4 ? 'Create Store' : 'Next'}
+                  <FiArrowRight className="ml-2" />
+                </>
+              )}
             </button>
           </div>
         </motion.div>

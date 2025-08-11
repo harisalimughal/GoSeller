@@ -119,7 +119,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'CART_ERROR',
-        payload: error.response?.data?.message || 'Failed to load cart',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to load cart',
       });
     }
   };
@@ -137,7 +137,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'CART_ERROR',
-        payload: error.response?.data?.message || 'Failed to add item to cart',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to add item to cart',
       });
     }
   };
@@ -155,7 +155,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'CART_ERROR',
-        payload: error.response?.data?.message || 'Failed to update cart item',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to update cart item',
       });
     }
   };
@@ -173,7 +173,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'CART_ERROR',
-        payload: error.response?.data?.message || 'Failed to remove item from cart',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to remove item from cart',
       });
     }
   };
@@ -191,7 +191,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'CART_ERROR',
-        payload: error.response?.data?.message || 'Failed to clear cart',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to clear cart',
       });
     }
   };
@@ -209,7 +209,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'CART_ERROR',
-        payload: error.response?.data?.message || 'Failed to apply coupon',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to apply coupon',
       });
     }
   };
@@ -227,7 +227,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } catch (error: any) {
       dispatch({
         type: 'CART_ERROR',
-        payload: error.response?.data?.message || 'Failed to remove coupon',
+        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to remove coupon',
       });
     }
   };

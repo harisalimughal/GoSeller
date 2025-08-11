@@ -1,8 +1,8 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { catchAsync } = require('../utils/catchAsync');
-const { ApiError } = require('../utils/ApiError');
-const { ApiResponse } = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
+const ApiResponse = require('../utils/ApiResponse');
 
 const router = express.Router();
 
@@ -217,25 +217,25 @@ router.put('/users/:id', [
 router.get('/sellers', catchAsync(async (req, res) => {
   const { page = 1, limit = 20, status, verificationStatus } = req.query;
 
-  // Mock sellers (in real app, fetch from database)
-  const sellers = [
-    {
-      id: 'seller_1',
-      businessName: 'Tech Store',
-      email: 'tech@example.com',
-      status: 'approved',
-      verificationStatus: 'verified',
-      createdAt: new Date()
-    },
-    {
-      id: 'seller_2',
-      businessName: 'Fashion Boutique',
-      email: 'fashion@example.com',
-      status: 'pending',
-      verificationStatus: 'pending',
-      createdAt: new Date(Date.now() - 86400000)
-    }
-  ];
+  // // Mock sellers (in real app, fetch from database)
+  // const sellers = [
+  //   {
+  //     id: 'seller_1',
+  //     businessName: 'Tech Store',
+  //     email: 'tech@example.com',
+  //     status: 'approved',
+  //     verificationStatus: 'verified',
+  //     createdAt: new Date()
+  //   },
+  //   {
+  //     id: 'seller_2',
+  //     businessName: 'Fashion Boutique',
+  //     email: 'fashion@example.com',
+  //     status: 'pending',
+  //     verificationStatus: 'pending',
+  //     createdAt: new Date(Date.now() - 86400000)
+  //   }
+  // ];
 
   // Filter sellers
   let filteredSellers = sellers;
@@ -571,6 +571,592 @@ router.put('/settings', [
   res.json(new ApiResponse(200, 'System settings updated successfully', {
     settings: updatedSettings
   }));
+}));
+
+// ========================================
+// VERIFICATION MANAGEMENT
+// ========================================
+
+// Get all sellers for verification
+router.get('/verifications', catchAsync(async (req, res) => {
+  const { page = 1, limit = 20, status } = req.query;
+  
+  try {
+    const Seller = require('../models/Seller');
+    
+    // Build filter query - removed isActive filter to show all sellers
+    const filter = {};
+    
+    // If status filter is provided, filter by verification status
+    if (status && status !== 'all') {
+      filter.$or = [
+        { 'serviceVerification.pss.status': status },
+        { 'serviceVerification.edr.status': status },
+        { 'serviceVerification.emo.status': status }
+      ];
+    }
+    
+    console.log('Verification filter:', filter);
+    
+    // Find sellers with complete information
+    const sellers = await Seller.find(filter)
+      .select('_id name shopName email contact serviceVerification kyc_docs createdAt profileType sellerType isActive')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    console.log(`Found ${sellers.length} sellers for verification`);
+    
+    const sellersForVerification = sellers.map(seller => {
+      console.log(`Processing seller: ${seller.name}, serviceVerification:`, seller.serviceVerification);
+      
+      return {
+        id: seller._id,
+        name: seller.name,
+        shopName: seller.shopName,
+        email: seller.email,
+        contact: seller.contact,
+        profileType: seller.profileType,
+        sellerType: seller.sellerType,
+        submittedAt: seller.createdAt,
+        pssStatus: seller.serviceVerification?.pss?.status || 'pending',
+        edrStatus: seller.serviceVerification?.edr?.status || 'pending',
+        emoStatus: seller.serviceVerification?.emo?.status || 'pending',
+        overallStatus: getOverallVerificationStatus(seller.serviceVerification)
+      };
+    });
+
+    // Get total count for pagination
+    const totalCount = await Seller.countDocuments(filter);
+
+    console.log(`Returning ${sellersForVerification.length} sellers for verification`);
+
+    res.json(new ApiResponse(200, 'Sellers for verification retrieved successfully', {
+      sellers: sellersForVerification,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount
+      }
+    }));
+  } catch (error) {
+    console.error('Error in verifications route:', error);
+    throw new ApiError(500, 'Failed to retrieve sellers for verification: ' + error.message);
+  }
+}));
+
+// Helper function to determine overall verification status
+function getOverallVerificationStatus(serviceVerification) {
+  if (!serviceVerification) return 'pending';
+  
+  const statuses = [
+    serviceVerification.pss?.status || 'pending',
+    serviceVerification.edr?.status || 'pending',
+    serviceVerification.emo?.status || 'pending'
+  ];
+  
+  if (statuses.every(status => status === 'approved')) return 'approved';
+  if (statuses.some(status => status === 'rejected')) return 'rejected';
+  if (statuses.some(status => status === 'approved')) return 'partial';
+  return 'pending';
+}
+
+// Migration route to initialize serviceVerification for existing sellers
+router.post('/verifications/migrate', catchAsync(async (req, res) => {
+  try {
+    const Seller = require('../models/Seller');
+    
+    console.log('Starting serviceVerification migration...');
+    
+    // Find sellers without serviceVerification field
+    const sellersToUpdate = await Seller.find({
+      $or: [
+        { serviceVerification: { $exists: false } },
+        { serviceVerification: null },
+        { 'serviceVerification.pss': { $exists: false } }
+      ]
+    });
+    
+    console.log(`Found ${sellersToUpdate.length} sellers to update`);
+    
+    // Update each seller
+    for (const seller of sellersToUpdate) {
+      await Seller.findByIdAndUpdate(seller._id, {
+        $set: {
+          serviceVerification: {
+            pss: { status: 'pending' },
+            edr: { status: 'pending' },
+            emo: { status: 'pending' }
+          }
+        }
+      });
+    }
+    
+    console.log('Migration completed successfully');
+    
+    res.json(new ApiResponse(200, 'Migration completed successfully', {
+      updated: sellersToUpdate.length
+    }));
+  } catch (error) {
+    console.error('Migration error:', error);
+    throw new ApiError(500, 'Migration failed: ' + error.message);
+  }
+}));
+
+// Migration route to upgrade SQL levels based on verification status
+router.post('/verifications/migrate-sql-levels', catchAsync(async (req, res) => {
+  try {
+    const Seller = require('../models/Seller');
+    
+    console.log('Starting SQL level migration based on verification status...');
+    
+    // Find all sellers with service verification data
+    const sellers = await Seller.find({
+      'serviceVerification': { $exists: true }
+    });
+    
+    console.log(`Found ${sellers.length} sellers to check for SQL level upgrade`);
+    
+    let upgradedCount = 0;
+    
+    // Update each seller's SQL level based on their verification status
+    for (const seller of sellers) {
+      const serviceVerification = seller.serviceVerification || {};
+      const pssApproved = serviceVerification.pss?.status === 'approved';
+      const edrApproved = serviceVerification.edr?.status === 'approved';
+      const emoApproved = serviceVerification.emo?.status === 'approved';
+
+      let newServiceLevel = 'Free';
+      let newProductLevel = 'Free';
+
+      // Determine new SQL levels based on verification status
+      if (pssApproved && edrApproved && emoApproved) {
+        // All three verified → High level
+        newServiceLevel = 'High';
+        newProductLevel = 'High';
+      } else if (pssApproved && edrApproved) {
+        // PSS + EDR verified → Normal level
+        newServiceLevel = 'Normal';
+        newProductLevel = 'Normal';
+      } else if (pssApproved) {
+        // Only PSS verified → Basic level
+        newServiceLevel = 'Basic';
+        newProductLevel = 'Basic';
+      }
+
+      // Update levels if they need to be changed
+      if (newServiceLevel !== seller.serviceSQL_level || newProductLevel !== seller.productSQL_level) {
+        await Seller.findByIdAndUpdate(
+          seller._id,
+          {
+            $set: {
+              serviceSQL_level: newServiceLevel,
+              productSQL_level: newProductLevel,
+              sqlLevelUpdatedAt: new Date()
+            }
+          },
+          { new: true, runValidators: false }
+        );
+
+        console.log(`Upgraded seller ${seller._id} (${seller.name}) SQL levels: Service=${newServiceLevel}, Product=${newProductLevel}`);
+        upgradedCount++;
+      }
+    }
+    
+    console.log(`SQL level migration completed successfully. Upgraded ${upgradedCount} sellers.`);
+    
+    res.json(new ApiResponse(200, 'SQL level migration completed successfully', {
+      totalSellers: sellers.length,
+      upgradedCount: upgradedCount
+    }));
+  } catch (error) {
+    console.error('SQL level migration error:', error);
+    throw new ApiError(500, 'SQL level migration failed: ' + error.message);
+  }
+}));
+
+// Test route to manually trigger SQL level upgrade for a seller (for testing)
+router.post('/verifications/test-upgrade/:sellerId', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  
+  try {
+    const Seller = require('../models/Seller');
+    const { ObjectId } = require('mongoose').Types;
+    
+    if (!ObjectId.isValid(sellerId)) {
+      throw new ApiError(400, 'Invalid seller ID format');
+    }
+
+    // Auto-upgrade seller level based on current verification status
+    await autoUpgradeSellerLevel(sellerId);
+
+    const updatedSeller = await Seller.findById(sellerId)
+      .select('name serviceSQL_level productSQL_level serviceVerification sqlLevelUpdatedAt');
+
+    res.json(new ApiResponse(200, 'SQL level upgrade test completed', {
+      seller: updatedSeller
+    }));
+  } catch (error) {
+    console.error('Test upgrade error:', error);
+    throw new ApiError(500, 'Test upgrade failed: ' + error.message);
+  }
+}));
+
+// Get seller details for verification
+router.get('/verifications/seller/:sellerId', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  
+  try {
+    const Seller = require('../models/Seller');
+    const { ObjectId } = require('mongoose').Types;
+    
+    if (!ObjectId.isValid(sellerId)) {
+      throw new ApiError(400, 'Invalid seller ID format');
+    }
+    
+    const seller = await Seller.findById(sellerId)
+      .select('_id name shopName email contact profileType sellerType serviceVerification kyc_docs businessDetails address createdAt');
+    
+    if (!seller) {
+      throw new ApiError(404, 'Seller not found');
+    }
+    
+    // Organize documents by verification type
+    const verificationSections = {
+      pss: {
+        status: seller.serviceVerification?.pss?.status || 'pending',
+        verifiedAt: seller.serviceVerification?.pss?.verifiedAt,
+        verifiedBy: seller.serviceVerification?.pss?.verifiedBy,
+        notes: seller.serviceVerification?.pss?.notes,
+        documents: []
+      },
+      edr: {
+        status: seller.serviceVerification?.edr?.status || 'pending',
+        verifiedAt: seller.serviceVerification?.edr?.verifiedAt,
+        verifiedBy: seller.serviceVerification?.edr?.verifiedBy,
+        notes: seller.serviceVerification?.edr?.notes,
+        documents: []
+      },
+      emo: {
+        status: seller.serviceVerification?.emo?.status || 'pending',
+        verifiedAt: seller.serviceVerification?.emo?.verifiedAt,
+        verifiedBy: seller.serviceVerification?.emo?.verifiedBy,
+        notes: seller.serviceVerification?.emo?.notes,
+        documents: []
+      }
+    };
+    
+    // Add PSS related documents
+    if (seller.kyc_docs?.pss) {
+      verificationSections.pss.documents.push({
+        type: 'pss',
+        name: 'PSS Document',
+        url: seller.kyc_docs.pss
+      });
+    }
+    if (seller.kyc_docs?.cnic?.frontImage) {
+      verificationSections.pss.documents.push({
+        type: 'cnic',
+        name: 'CNIC Document',
+        url: seller.kyc_docs.cnic.frontImage
+      });
+    }
+    
+    // Add EDR related documents (business license, etc.)
+    if (seller.kyc_docs?.edr) {
+      verificationSections.edr.documents.push({
+        type: 'edr',
+        name: 'EDR Document',
+        url: seller.kyc_docs.edr
+      });
+    }
+    if (seller.kyc_docs?.businessLicense?.image) {
+      verificationSections.edr.documents.push({
+        type: 'businessLicense',
+        name: 'Business License',
+        url: seller.kyc_docs.businessLicense.image
+      });
+    }
+    
+    // Add EMO related documents (address proof, bank statement, etc.)
+    if (seller.kyc_docs?.emo) {
+      verificationSections.emo.documents.push({
+        type: 'emo',
+        name: 'EMO Document',
+        url: seller.kyc_docs.emo
+      });
+    }
+    if (seller.kyc_docs?.addressProof?.image) {
+      verificationSections.emo.documents.push({
+        type: 'addressProof',
+        name: 'Address Proof',
+        url: seller.kyc_docs.addressProof.image
+      });
+    }
+    if (seller.kyc_docs?.bankStatement?.image) {
+      verificationSections.emo.documents.push({
+        type: 'bankStatement',
+        name: 'Bank Statement',
+        url: seller.kyc_docs.bankStatement.image
+      });
+    }
+    
+    const sellerDetails = {
+      id: seller._id,
+      name: seller.name,
+      shopName: seller.shopName,
+      email: seller.email,
+      contact: seller.contact,
+      profileType: seller.profileType,
+      sellerType: seller.sellerType,
+      businessDetails: seller.businessDetails,
+      address: seller.address,
+      registeredAt: seller.createdAt,
+      verificationSections
+    };
+    
+    res.json(new ApiResponse(200, 'Seller details retrieved successfully', {
+      seller: sellerDetails
+    }));
+  } catch (error) {
+    throw new ApiError(500, 'Failed to retrieve seller details: ' + error.message);
+  }
+}));
+
+// Update service verification status for a specific section (PSS/EDR/EMO)
+router.patch('/verifications/seller/:sellerId/:section', catchAsync(async (req, res) => {
+  const { sellerId, section } = req.params;
+  const { status, reviewerNotes } = req.body;
+
+  console.log('Service verification update request:', { sellerId, section, status, reviewerNotes });
+
+  try {
+    const Seller = require('../models/Seller');
+    const { ObjectId } = require('mongoose').Types;
+    
+    // Validate input
+    if (!ObjectId.isValid(sellerId)) {
+      throw new ApiError(400, 'Invalid seller ID format');
+    }
+
+    if (!['pss', 'edr', 'emo'].includes(section)) {
+      throw new ApiError(400, 'Invalid verification section. Must be pss, edr, or emo');
+    }
+
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      throw new ApiError(400, 'Invalid status value');
+    }
+
+    // Update service verification status using direct database update
+    const updateData = {};
+    updateData[`serviceVerification.${section}.status`] = status;
+    updateData[`serviceVerification.${section}.verifiedAt`] = new Date();
+    updateData[`serviceVerification.${section}.verifiedBy`] = 'admin';
+    if (reviewerNotes) {
+      updateData[`serviceVerification.${section}.notes`] = reviewerNotes;
+    }
+
+    console.log('Update data:', updateData);
+
+    const updatedSeller = await Seller.findByIdAndUpdate(
+      sellerId,
+      { $set: updateData },
+      { new: true, runValidators: false }
+    );
+
+    if (!updatedSeller) {
+      throw new ApiError(404, 'Seller not found');
+    }
+
+    // Auto-upgrade SQL level based on verification status
+    await autoUpgradeSellerLevel(updatedSeller._id);
+
+    console.log('Service verification updated successfully');
+
+    res.json(new ApiResponse(200, 'Service verification status updated successfully', {
+      sellerId,
+      section,
+      status,
+      reviewedAt: new Date()
+    }));
+  } catch (error) {
+    console.error('Service verification update error:', error);
+    throw new ApiError(500, 'Failed to update service verification: ' + error.message);
+  }
+}));
+
+// Auto-upgrade seller SQL level based on verification status
+async function autoUpgradeSellerLevel(sellerId) {
+  try {
+    const Seller = require('../models/Seller');
+    const seller = await Seller.findById(sellerId);
+    
+    if (!seller) return;
+
+    const serviceVerification = seller.serviceVerification || {};
+    const pssApproved = serviceVerification.pss?.status === 'approved';
+    const edrApproved = serviceVerification.edr?.status === 'approved';
+    const emoApproved = serviceVerification.emo?.status === 'approved';
+
+    let newServiceLevel = seller.serviceSQL_level;
+    let newProductLevel = seller.productSQL_level;
+
+    // Determine new SQL levels based on verification status
+    if (pssApproved && edrApproved && emoApproved) {
+      // All three verified → High level
+      newServiceLevel = 'High';
+      newProductLevel = 'High';
+    } else if (pssApproved && edrApproved) {
+      // PSS + EDR verified → Normal level
+      newServiceLevel = 'Normal';
+      newProductLevel = 'Normal';
+    } else if (pssApproved) {
+      // Only PSS verified → Basic level
+      newServiceLevel = 'Basic';
+      newProductLevel = 'Basic';
+    } else {
+      // No verifications approved → Free level
+      newServiceLevel = 'Free';
+      newProductLevel = 'Free';
+    }
+
+    // Update levels if they have changed
+    if (newServiceLevel !== seller.serviceSQL_level || newProductLevel !== seller.productSQL_level) {
+      await Seller.findByIdAndUpdate(
+        sellerId,
+        {
+          $set: {
+            serviceSQL_level: newServiceLevel,
+            productSQL_level: newProductLevel,
+            sqlLevelUpdatedAt: new Date()
+          }
+        },
+        { new: true, runValidators: false }
+      );
+
+      console.log(`Auto-upgraded seller ${sellerId} SQL levels: Service=${newServiceLevel}, Product=${newProductLevel}`);
+    }
+  } catch (error) {
+    console.error('Error in auto-upgrade seller level:', error);
+  }
+}
+
+// Update verification status (legacy route - keeping for backward compatibility)
+router.patch('/verifications/:verificationId', catchAsync(async (req, res) => {
+  const { verificationId } = req.params;
+  const { status, reviewerNotes } = req.body;
+
+  console.log('Verification update request:', { verificationId, status, reviewerNotes });
+
+  try {
+    const Seller = require('../models/Seller');
+    const { ObjectId } = require('mongoose').Types;
+    
+    // Parse verification ID to get seller ID and document type
+    const [sellerId, documentType] = verificationId.split('_');
+    console.log('Parsed IDs:', { sellerId, documentType });
+    
+    // Validate input
+    if (!sellerId || !documentType) {
+      throw new ApiError(400, 'Invalid verification ID format');
+    }
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(sellerId)) {
+      throw new ApiError(400, 'Invalid seller ID format');
+    }
+
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      throw new ApiError(400, 'Invalid status value');
+    }
+
+    // Update verification status using direct database update
+    const updateData = {};
+    updateData[`productVerification.${documentType}.status`] = status;
+    updateData[`productVerification.${documentType}.verifiedAt`] = new Date();
+    updateData[`productVerification.${documentType}.verifiedBy`] = 'admin';
+    if (reviewerNotes) {
+      updateData[`productVerification.${documentType}.notes`] = reviewerNotes;
+    }
+
+    console.log('Update data:', updateData);
+
+    const updatedSeller = await Seller.findByIdAndUpdate(
+      sellerId,
+      { $set: updateData },
+      { new: true, runValidators: false }
+    );
+
+    if (!updatedSeller) {
+      throw new ApiError(404, 'Seller not found');
+    }
+
+    console.log('Verification updated successfully');
+
+    res.json(new ApiResponse(200, 'Verification status updated successfully', {
+      verificationId,
+      status,
+      reviewedAt: new Date()
+    }));
+  } catch (error) {
+    console.error('Verification update error:', error);
+    throw new ApiError(500, 'Failed to update verification: ' + error.message);
+  }
+}));
+
+// Get verification details
+router.get('/verifications/:verificationId', catchAsync(async (req, res) => {
+  const { verificationId } = req.params;
+
+  try {
+    const Seller = require('../models/Seller');
+    
+    const [sellerId, documentType] = verificationId.split('_');
+    
+    const seller = await Seller.findById(sellerId);
+    if (!seller) {
+      throw new ApiError(404, 'Seller not found');
+    }
+
+    const docMappings = {
+      'pss': 'pss',
+      'edr': 'edr', 
+      'emo': 'emo',
+      'businessLicense': 'businessLicense.image',
+      'cnic': 'cnic.frontImage',
+      'addressProof': 'addressProof.image',
+      'bankStatement': 'bankStatement.image'
+    };
+    
+    const schemaPath = docMappings[documentType];
+    const docValue = schemaPath.includes('.') 
+      ? seller.kyc_docs?.[schemaPath.split('.')[0]]?.[schemaPath.split('.')[1]]
+      : seller.kyc_docs?.[schemaPath];
+
+    if (!docValue) {
+      throw new ApiError(404, 'Document not found');
+    }
+
+    const verification = {
+      id: verificationId,
+      sellerId: seller._id,
+      sellerName: seller.shopName || seller.name,
+      documentType: documentType,
+      documentName: `${documentType.toUpperCase()} Document`,
+      status: seller.productVerification?.[documentType]?.status || 'pending',
+      submittedAt: seller.createdAt,
+      reviewedAt: seller.productVerification?.[documentType]?.verifiedAt,
+      reviewerNotes: seller.productVerification?.[documentType]?.notes,
+      fileUrl: docValue,
+      documentUrl: seller.kyc_docs?.[documentType]?.url
+    };
+
+    res.json(new ApiResponse(200, 'Verification details retrieved successfully', {
+      verification
+    }));
+  } catch (error) {
+    throw new ApiError(500, 'Failed to retrieve verification details: ' + error.message);
+  }
 }));
 
 module.exports = router;

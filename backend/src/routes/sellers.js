@@ -5,8 +5,8 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const { catchAsync } = require('../utils/catchAsync');
-const { ApiError } = require('../utils/ApiError');
-const { ApiResponse } = require('../utils/ApiResponse');
+const ApiError = require('../utils/ApiError');
+const ApiResponse = require('../utils/ApiResponse');
 
 const router = express.Router();
 
@@ -26,7 +26,14 @@ router.post('/register', [
 ], catchAsync(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    throw new ApiError(400, 'Validation failed', errors.array());
+    // Format validation errors for better user experience
+    const formattedErrors = errors.array().map(error => ({
+      field: error.path,
+      message: error.msg,
+      value: error.value
+    }));
+    
+    throw new ApiError(400, 'Please check the following fields:', formattedErrors);
   }
 
   const {
@@ -42,22 +49,30 @@ router.post('/register', [
     socialMedia
   } = req.body;
 
-  // Check if seller already exists
-  const existingSeller = await Seller.findOne({
-    $or: [{ email }, { phone }]
-  });
+  // Check if seller already exists with more specific error messages
+  const existingSellerByEmail = await Seller.findOne({ email });
+  const existingSellerByPhone = await Seller.findOne({ phone });
 
-  if (existingSeller) {
-    throw new ApiError(409, 'Seller already exists with this email or phone');
+  if (existingSellerByEmail && existingSellerByPhone) {
+    throw new ApiError(409, 'A seller account already exists with both this email and phone number. Please use different credentials or contact support for assistance.');
+  } else if (existingSellerByEmail) {
+    throw new ApiError(409, 'A seller account already exists with this email address. Please use a different email or try logging in if you already have an account.');
+  } else if (existingSellerByPhone) {
+    throw new ApiError(409, 'A seller account already exists with this phone number. Please use a different phone number or try logging in if you already have an account.');
   }
 
   // Create seller
   const seller = new Seller({
     userId: req.user.userId,
+    name: businessName, // Required field
+    email,
+    password: 'temp_password_' + Date.now(), // Required field - will be updated later
+    contact: phone, // Required field
+    location: `${address.city || ''}, ${address.state || ''}, ${address.country || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, ''),
+    sellerType: 'store', // Required field
+    shopName: businessName, // Required field
     businessName,
     businessType,
-    email,
-    phone,
     address,
     documents,
     bankDetails,
@@ -68,20 +83,43 @@ router.post('/register', [
     verificationStatus: 'pending'
   });
 
-  await seller.save();
+  try {
+    await seller.save();
+  } catch (saveError) {
+    console.error('Seller save error:', saveError);
+    
+    // Handle specific database errors
+    if (saveError.code === 11000) {
+      // Duplicate key error - this shouldn't happen since we checked above, but handle it anyway
+      const field = Object.keys(saveError.keyValue)[0];
+      throw new ApiError(409, `A seller account already exists with this ${field}. Please use different credentials.`);
+    } else if (saveError.name === 'ValidationError') {
+      const validationErrors = Object.values(saveError.errors).map(err => err.message).join(', ');
+      throw new ApiError(400, `Validation failed: ${validationErrors}`);
+    } else {
+      throw new ApiError(500, 'Failed to create seller account. Please try again or contact support.');
+    }
+  }
 
   // Update user role to seller
-  await User.findByIdAndUpdate(req.user.userId, {
-    role: 'seller',
-    userType: 'seller'
-  });
+  try {
+    await User.findByIdAndUpdate(req.user.userId, {
+      role: 'seller',
+      userType: 'seller'
+    });
+  } catch (userUpdateError) {
+    console.error('User role update error:', userUpdateError);
+    // Don't fail the entire registration if user role update fails
+    // The seller account was created successfully
+  }
 
   res.status(201).json(new ApiResponse(201, 'Seller registration successful', {
     seller: {
       id: seller._id,
       businessName: seller.businessName,
       status: seller.status,
-      verificationStatus: seller.verificationStatus
+      verificationStatus: seller.verificationStatus,
+      sqlLevel: seller.sqlLevel || 'Free'
     }
   }));
 }));

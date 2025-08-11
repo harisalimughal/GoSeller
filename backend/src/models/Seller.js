@@ -31,10 +31,15 @@ const sellerSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  // Seller Type & Profile
+  // Enhanced Seller Type & Profile
   sellerType: {
     type: String,
-    enum: ['shopkeeper', 'store', 'wholesaler', 'distributor', 'dealer', 'company'],
+    enum: ['company', 'dealer', 'wholesaler', 'trader', 'storekeeper'],
+    required: true
+  },
+  sellerCategory: {
+    type: String,
+    enum: ['Company', 'Dealer', 'Wholesaler', 'Trader', 'Storekeeper'],
     required: true
   },
   profileType: {
@@ -59,6 +64,36 @@ const sellerSchema = new mongoose.Schema({
     enum: ['Free', 'Basic', 'Normal', 'High', 'VIP'],
     default: 'Free'
   },
+  // SQL Level update tracking
+  sqlLevelUpdatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  // Seller Capabilities based on category
+  capabilities: {
+    productListing: { type: Boolean, default: true },
+    priceControl: { type: Boolean, default: true },
+    orderHandling: { type: Boolean, default: false },
+    franchiseIncomeContribution: { type: Boolean, default: true },
+    supplyChainFlowMonitoring: { type: Boolean, default: true },
+    bulkOrderTools: { type: Boolean, default: true },
+    dashboardRoleAccess: { type: String, enum: ['Full', 'Regional', 'Zonal', 'Local', 'Area-wise'], default: 'Area-wise' }
+  },
+  // Supply Chain Information
+  supplyChain: {
+    parentCompany: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller' },
+    childCompanies: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Seller' }],
+    dealers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Seller' }],
+    wholesalers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Seller' }],
+    traders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Seller' }],
+    retailers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Seller' }],
+    distributionArea: {
+      type: String,
+      enum: ['National', 'Regional', 'Zonal', 'Local', 'Area-specific'],
+      default: 'Local'
+    },
+    authorizedTerritories: [String]
+  },
   // Verification Status
   verified: {
     type: Boolean,
@@ -78,14 +113,17 @@ const sellerSchema = new mongoose.Schema({
       verified: { type: Boolean, default: false }
     },
     addressProof: {
-      type: String,
       image: String,
       verified: { type: Boolean, default: false }
     },
     bankStatement: {
       image: String,
       verified: { type: Boolean, default: false }
-    }
+    },
+    // SQL-specific documents
+    pss: String,
+    edr: String,
+    emo: String
   },
   // Business Details
   businessDetails: {
@@ -115,14 +153,58 @@ const sellerSchema = new mongoose.Schema({
   }],
   // PSS, EDR, EMO Verification (Separate for Products & Services)
   productVerification: {
-    pss: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
-    edr: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
-    emo: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String }
+    type: {
+      pss: { 
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
+        verifiedAt: Date, 
+        verifiedBy: String,
+        notes: String
+      },
+      edr: { 
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
+        verifiedAt: Date, 
+        verifiedBy: String,
+        notes: String
+      },
+      emo: { 
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
+        verifiedAt: Date, 
+        verifiedBy: String,
+        notes: String
+      }
+    },
+    default: {
+      pss: { status: 'pending' },
+      edr: { status: 'pending' },
+      emo: { status: 'pending' }
+    }
   },
   serviceVerification: {
-    pss: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
-    edr: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String },
-    emo: { status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, verifiedAt: Date, verifiedBy: String }
+    type: {
+      pss: { 
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
+        verifiedAt: Date, 
+        verifiedBy: String,
+        notes: String
+      },
+      edr: { 
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
+        verifiedAt: Date, 
+        verifiedBy: String,
+        notes: String
+      },
+      emo: { 
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
+        verifiedAt: Date, 
+        verifiedBy: String,
+        notes: String
+      }
+    },
+    default: {
+      pss: { status: 'pending' },
+      edr: { status: 'pending' },
+      emo: { status: 'pending' }
+    }
   },
   // Contact Information
   contactInfo: {
@@ -214,6 +296,7 @@ const sellerSchema = new mongoose.Schema({
 sellerSchema.index({ email: 1 }, { unique: true });
 sellerSchema.index({ contact: 1 });
 sellerSchema.index({ sellerType: 1 });
+sellerSchema.index({ sellerCategory: 1 });
 sellerSchema.index({ profileType: 1 });
 sellerSchema.index({ productSQL_level: 1 });
 sellerSchema.index({ serviceSQL_level: 1 });
@@ -230,6 +313,9 @@ sellerSchema.pre('save', async function(next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 12);
   }
+
+  // Set capabilities based on seller category
+  this.setCapabilities();
 
   this.updatedAt = new Date();
   next();
@@ -305,6 +391,43 @@ sellerSchema.methods.updateRating = function(newRating) {
   return this.save();
 };
 
+// Set capabilities based on seller category
+sellerSchema.methods.setCapabilities = function() {
+  const capabilities = {
+    productListing: true,
+    priceControl: true,
+    orderHandling: false,
+    franchiseIncomeContribution: true,
+    supplyChainFlowMonitoring: true,
+    bulkOrderTools: true,
+    dashboardRoleAccess: 'Area-wise'
+  };
+
+  switch (this.sellerCategory) {
+    case 'Company':
+      capabilities.dashboardRoleAccess = 'Full';
+      break;
+    case 'Dealer':
+      capabilities.dashboardRoleAccess = 'Regional';
+      break;
+    case 'Wholesaler':
+      capabilities.dashboardRoleAccess = 'Zonal';
+      break;
+    case 'Trader':
+      capabilities.dashboardRoleAccess = 'Local';
+      break;
+    case 'Storekeeper':
+      capabilities.orderHandling = true;
+      capabilities.priceControl = false;
+      capabilities.supplyChainFlowMonitoring = false;
+      capabilities.bulkOrderTools = false;
+      capabilities.dashboardRoleAccess = 'Area-wise';
+      break;
+  }
+
+  this.capabilities = capabilities;
+};
+
 // Static methods
 sellerSchema.statics.findByEmail = function(email) {
   return this.findOne({ email: email.toLowerCase() });
@@ -344,6 +467,13 @@ sellerSchema.statics.findByLocation = function(city) {
   });
 };
 
+sellerSchema.statics.findBySellerCategory = function(category) {
+  return this.find({
+    sellerCategory: category,
+    isActive: true
+  });
+};
+
 sellerSchema.statics.getSellerStats = function() {
   return this.aggregate([
     { $match: { isActive: true } },
@@ -374,7 +504,13 @@ sellerSchema.statics.getSellerStats = function() {
             $cond: ['$verified', 1, 0]
           }
         },
-        averageRating: { $avg: '$rating.average' }
+        averageRating: { $avg: '$rating.average' },
+        categoryStats: {
+          $push: {
+            category: '$sellerCategory',
+            count: 1
+          }
+        }
       }
     }
   ]);

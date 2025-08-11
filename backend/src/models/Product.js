@@ -45,6 +45,25 @@ const productSchema = new mongoose.Schema({
     type: Number,
     min: 0
   },
+  // Tiered Pricing for Company Sellers
+  tieredPricing: {
+    dealerPrice: {
+      type: Number,
+      min: 0
+    },
+    wholesalerPrice: {
+      type: Number,
+      min: 0
+    },
+    storePrice: {
+      type: Number,
+      min: 0
+    },
+    retailPrice: {
+      type: Number,
+      min: 0
+    }
+  },
   discountPercentage: {
     type: Number,
     min: 0,
@@ -60,6 +79,34 @@ const productSchema = new mongoose.Schema({
     required: true,
     min: 0,
     default: 0
+  },
+  // Enhanced Inventory Management
+  inventory: {
+    availableStock: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    reservedStock: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    minimumStockLevel: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    reorderPoint: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    supplierInfo: {
+      name: String,
+      contact: String,
+      leadTime: Number // in days
+    }
   },
   sku: {
     type: String,

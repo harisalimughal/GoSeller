@@ -25,6 +25,8 @@ const blockchainRoutes = require('./routes/blockchain');
 const analyticsRoutes = require('./routes/analytics');
 const deliveryRoutes = require('./routes/delivery');
 const sellerRoutes = require('./routes/seller');
+const sellerRegistrationRoutes = require('./routes/sellerRegistration');
+const sellerHierarchyRoutes = require('./routes/sellerHierarchy');
 const complaintsRoutes = require('./routes/complaints');
 const adminRoutes = require('./routes/admin');
 const walletRoutes = require('./routes/wallet');
@@ -76,7 +78,12 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:4000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:4000',
+    'http://localhost:4001', // Admin panel
+    'http://localhost:5173', // Vite default dev server
+    'http://localhost:3000'  // Alternative frontend port
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -136,6 +143,8 @@ app.use('/api/blockchain', blockchainRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/delivery', protect, deliveryRoutes);
 app.use('/api/seller', sellerRoutes);
+app.use('/api/seller-registration', sellerRegistrationRoutes);
+app.use('/api/seller-hierarchy', sellerHierarchyRoutes);
 app.use('/api/complaints', complaintsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/wallet', walletRoutes);
@@ -249,7 +258,7 @@ process.on('SIGTERM', async () => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     await connectDB();

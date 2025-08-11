@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import { CATEGORIES, CATEGORY_TO_SLUG_MAPPING, CATEGORY_DESCRIPTIONS } from '../config/categories';
 
 // Simplified Product interface for dummy data
 interface DummyProduct {
@@ -187,165 +188,46 @@ const HomePage: React.FC = () => {
     lastName: '',
   });
 
-  // GoSeller categories with best sellers
-  const gosellerCategories = [
-    { 
-      id: '1', 
-      name: 'Electronics', 
-      icon: '📱', 
-      color: 'bg-blue-500',
-      slug: 'electronics',
-      bestSellers: [
-        { _id: '1', name: 'Wireless Bluetooth Headphones', price: 89.99, originalPrice: 129.99, rating: 4.5, reviews: 1247, stock: 50, images: [getProductImage('Wireless Bluetooth Headphones', 'Electronics')], category: 'Electronics', brand: 'TechPro', isBestSeller: true },
-        { _id: '2', name: 'Smartphone 128GB', price: 599.99, originalPrice: 699.99, rating: 4.8, reviews: 892, stock: 25, images: [getProductImage('Smartphone 128GB', 'Electronics')], category: 'Electronics', brand: 'PhoneMax', isBestSeller: true },
-        { _id: '3', name: '4K Smart TV 55"', price: 449.99, originalPrice: 599.99, rating: 4.6, reviews: 567, stock: 15, images: [getProductImage('4K Smart TV 55"', 'Electronics')], category: 'Electronics', brand: 'ViewTech', isBestSeller: true },
-        { _id: '4', name: 'Laptop 15.6" 8GB RAM', price: 799.99, originalPrice: 999.99, rating: 4.7, reviews: 423, stock: 30, images: [getProductImage('Laptop 15.6" 8GB RAM', 'Electronics')], category: 'Electronics', brand: 'CompTech', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '2', 
-      name: 'Fashion', 
-      icon: '👕', 
-      color: 'bg-pink-500',
-      slug: 'fashion',
-      bestSellers: [
-        { _id: '5', name: 'Men\'s Casual T-Shirt', price: 24.99, originalPrice: 34.99, rating: 4.3, reviews: 156, stock: 100, images: [getProductImage('Men\'s Casual T-Shirt', 'Fashion')], category: 'Fashion', brand: 'StyleWear', isBestSeller: true },
-        { _id: '6', name: 'Women\'s Summer Dress', price: 49.99, originalPrice: 69.99, rating: 4.4, reviews: 234, stock: 75, images: [getProductImage('Women\'s Summer Dress', 'Fashion')], category: 'Fashion', brand: 'Fashionista', isBestSeller: true },
-        { _id: '7', name: 'Running Shoes', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 60, images: [getProductImage('Running Shoes', 'Fashion')], category: 'Fashion', brand: 'SportFlex', isBestSeller: true },
-        { _id: '8', name: 'Denim Jeans', price: 59.99, originalPrice: 79.99, rating: 4.2, reviews: 98, stock: 80, images: [getProductImage('Denim Jeans', 'Fashion')], category: 'Fashion', brand: 'DenimCo', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '3', 
-      name: 'Home & Kitchen', 
-      icon: '🏠', 
-      color: 'bg-green-500',
-      slug: 'home-kitchen',
-      bestSellers: [
-        { _id: '9', name: 'Coffee Maker', price: 89.99, originalPrice: 119.99, rating: 4.5, reviews: 312, stock: 40, images: [getProductImage('Coffee Maker', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'BrewMaster', isBestSeller: true },
-        { _id: '10', name: 'Kitchen Knife Set', price: 69.99, originalPrice: 89.99, rating: 4.7, reviews: 156, stock: 55, images: [getProductImage('Kitchen Knife Set', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'SharpEdge', isBestSeller: true },
-        { _id: '11', name: 'Blender 1000W', price: 49.99, originalPrice: 69.99, rating: 4.3, reviews: 234, stock: 70, images: [getProductImage('Blender 1000W', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'BlendPro', isBestSeller: true },
-        { _id: '12', name: 'Bedding Set Queen', price: 79.99, originalPrice: 99.99, rating: 4.4, reviews: 189, stock: 45, images: [getProductImage('Bedding Set Queen', 'Home & Kitchen')], category: 'Home & Kitchen', brand: 'SleepComfort', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '4', 
-      name: 'Sports & Outdoors', 
-      icon: '⚽', 
-      color: 'bg-orange-500',
-      slug: 'sports-outdoors',
-      bestSellers: [
-        { _id: '13', name: 'Yoga Mat Premium', price: 29.99, originalPrice: 39.99, rating: 4.6, reviews: 445, stock: 120, images: [getProductImage('Yoga Mat Premium', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'FitLife', isBestSeller: true },
-        { _id: '14', name: 'Basketball Official Size', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 90, images: [getProductImage('Basketball Official Size', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'SportBall', isBestSeller: true },
-        { _id: '15', name: 'Tennis Racket Pro', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 156, stock: 35, images: [getProductImage('Tennis Racket Pro', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'RacketPro', isBestSeller: true },
-        { _id: '16', name: 'Camping Tent 4-Person', price: 149.99, originalPrice: 199.99, rating: 4.4, reviews: 98, stock: 25, images: [getProductImage('Camping Tent 4-Person', 'Sports & Outdoors')], category: 'Sports & Outdoors', brand: 'OutdoorLife', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '5', 
-      name: 'Books', 
-      icon: '📚', 
-      color: 'bg-purple-500',
-      slug: 'books',
-      bestSellers: [
-        { _id: '17', name: 'The Great Gatsby', price: 12.99, originalPrice: 16.99, rating: 4.8, reviews: 1234, stock: 200, images: [getProductImage('The Great Gatsby', 'Books')], category: 'Books', brand: 'ClassicBooks', isBestSeller: true },
-        { _id: '18', name: 'Programming Guide 2024', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 567, stock: 150, images: [getProductImage('Programming Guide 2024', 'Books')], category: 'Books', brand: 'TechBooks', isBestSeller: true },
-        { _id: '19', name: 'Cookbook Collection', price: 24.99, originalPrice: 29.99, rating: 4.5, reviews: 345, stock: 100, images: [getProductImage('Cookbook Collection', 'Books')], category: 'Books', brand: 'CookingPro', isBestSeller: true },
-        { _id: '20', name: 'Children\'s Story Book', price: 9.99, originalPrice: 14.99, rating: 4.7, reviews: 234, stock: 300, images: [getProductImage('Children\'s Story Book', 'Books')], category: 'Books', brand: 'KidsRead', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '6', 
-      name: 'Toys & Games', 
-      icon: '🎮', 
-      color: 'bg-red-500',
-      slug: 'toys-games',
-      bestSellers: [
-        { _id: '21', name: 'Board Game Strategy', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 234, stock: 75, images: [getProductImage('Board Game Strategy', 'Toys & Games')], category: 'Toys & Games', brand: 'GameMaster', isBestSeller: true },
-        { _id: '22', name: 'LEGO Building Set', price: 59.99, originalPrice: 79.99, rating: 4.8, reviews: 456, stock: 60, images: [getProductImage('LEGO Building Set', 'Toys & Games')], category: 'Toys & Games', brand: 'LEGO', isBestSeller: true },
-        { _id: '23', name: 'Remote Control Car', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: [getProductImage('Remote Control Car', 'Toys & Games')], category: 'Toys & Games', brand: 'RCPro', isBestSeller: true },
-        { _id: '24', name: 'Puzzle 1000 Pieces', price: 19.99, originalPrice: 24.99, rating: 4.5, reviews: 123, stock: 120, images: [getProductImage('Puzzle 1000 Pieces', 'Toys & Games')], category: 'Toys & Games', brand: 'PuzzleMaster', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '7', 
-      name: 'Automotive', 
-      icon: '🚗', 
-      color: 'bg-gray-500',
-      slug: 'automotive',
-      bestSellers: [
-        { _id: '25', name: 'Car Phone Mount', price: 19.99, originalPrice: 29.99, rating: 4.4, reviews: 567, stock: 200, images: [getProductImage('Car Phone Mount', 'Automotive')], category: 'Automotive', brand: 'CarTech', isBestSeller: true },
-        { _id: '26', name: 'Dash Camera HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 234, stock: 80, images: [getProductImage('Dash Camera HD', 'Automotive')], category: 'Automotive', brand: 'DashCam', isBestSeller: true },
-        { _id: '27', name: 'Car Floor Mats', price: 39.99, originalPrice: 49.99, rating: 4.3, reviews: 189, stock: 150, images: [getProductImage('Car Floor Mats', 'Automotive')], category: 'Automotive', brand: 'MatPro', isBestSeller: true },
-        { _id: '28', name: 'Bluetooth Car Speaker', price: 69.99, originalPrice: 89.99, rating: 4.5, reviews: 123, stock: 60, images: [getProductImage('Bluetooth Car Speaker', 'Automotive')], category: 'Automotive', brand: 'SoundPro', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '8', 
-      name: 'Health & Beauty', 
-      icon: '💄', 
-      color: 'bg-indigo-500',
-      slug: 'health-beauty',
-      bestSellers: [
-        { _id: '29', name: 'Electric Toothbrush', price: 49.99, originalPrice: 69.99, rating: 4.7, reviews: 456, stock: 100, images: [getProductImage('Electric Toothbrush', 'Health & Beauty')], category: 'Health & Beauty', brand: 'DentalPro', isBestSeller: true },
-        { _id: '30', name: 'Facial Cleanser Set', price: 29.99, originalPrice: 39.99, rating: 4.5, reviews: 234, stock: 120, images: [getProductImage('Facial Cleanser Set', 'Health & Beauty')], category: 'Health & Beauty', brand: 'BeautyCare', isBestSeller: true },
-        { _id: '31', name: 'Hair Dryer Professional', price: 79.99, originalPrice: 99.99, rating: 4.6, reviews: 189, stock: 75, images: [getProductImage('Hair Dryer Professional', 'Health & Beauty')], category: 'Health & Beauty', brand: 'HairPro', isBestSeller: true },
-        { _id: '32', name: 'Makeup Brush Set', price: 24.99, originalPrice: 34.99, rating: 4.4, reviews: 156, stock: 90, images: [getProductImage('Makeup Brush Set', 'Health & Beauty')], category: 'Health & Beauty', brand: 'MakeupPro', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '9', 
-      name: 'Garden & Tools', 
-      icon: '🌱', 
-      color: 'bg-teal-500',
-      slug: 'garden-tools',
-      bestSellers: [
-        { _id: '33', name: 'Garden Hose 50ft', price: 34.99, originalPrice: 44.99, rating: 4.5, reviews: 234, stock: 80, images: [getProductImage('Garden Hose 50ft', 'Garden & Tools')], category: 'Garden & Tools', brand: 'GardenPro', isBestSeller: true },
-        { _id: '34', name: 'Cordless Drill Set', price: 89.99, originalPrice: 119.99, rating: 4.7, reviews: 189, stock: 45, images: [getProductImage('Cordless Drill Set', 'Garden & Tools')], category: 'Garden & Tools', brand: 'ToolPro', isBestSeller: true },
-        { _id: '35', name: 'Plant Pots Set', price: 19.99, originalPrice: 29.99, rating: 4.3, reviews: 123, stock: 150, images: [getProductImage('Plant Pots Set', 'Garden & Tools')], category: 'Garden & Tools', brand: 'PlantCare', isBestSeller: true },
-        { _id: '36', name: 'Garden Tool Kit', price: 59.99, originalPrice: 79.99, rating: 4.6, reviews: 98, stock: 60, images: [getProductImage('Garden Tool Kit', 'Garden & Tools')], category: 'Garden & Tools', brand: 'GardenTools', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '10', 
-      name: 'Pet Supplies', 
-      icon: '🐕', 
-      color: 'bg-yellow-500',
-      slug: 'pet-supplies',
-      bestSellers: [
-        { _id: '37', name: 'Pet Food Premium', price: 39.99, originalPrice: 49.99, rating: 4.6, reviews: 345, stock: 100, images: [getProductImage('Pet Food Premium', 'Pet Supplies')], category: 'Pet Supplies', brand: 'PetFood', isBestSeller: true },
-        { _id: '38', name: 'Pet Bed Large', price: 49.99, originalPrice: 69.99, rating: 4.5, reviews: 234, stock: 75, images: [getProductImage('Pet Bed Large', 'Pet Supplies')], category: 'Pet Supplies', brand: 'PetComfort', isBestSeller: true },
-        { _id: '39', name: 'Cat Scratching Post', price: 29.99, originalPrice: 39.99, rating: 4.4, reviews: 189, stock: 90, images: [getProductImage('Cat Scratching Post', 'Pet Supplies')], category: 'Pet Supplies', brand: 'CatCare', isBestSeller: true },
-        { _id: '40', name: 'Dog Leash Retractable', price: 24.99, originalPrice: 34.99, rating: 4.7, reviews: 156, stock: 120, images: [getProductImage('Dog Leash Retractable', 'Pet Supplies')], category: 'Pet Supplies', brand: 'DogPro', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '11', 
-      name: 'Baby Products', 
-      icon: '🍼', 
-      color: 'bg-pink-400',
-      slug: 'baby-products',
-      bestSellers: [
-        { _id: '41', name: 'Baby Diapers Pack', price: 34.99, originalPrice: 44.99, rating: 4.6, reviews: 456, stock: 200, images: [getProductImage('Baby Diapers Pack', 'Baby Products')], category: 'Baby Products', brand: 'BabyCare', isBestSeller: true },
-        { _id: '42', name: 'Baby Formula Premium', price: 29.99, originalPrice: 39.99, rating: 4.7, reviews: 234, stock: 150, images: [getProductImage('Baby Formula Premium', 'Baby Products')], category: 'Baby Products', brand: 'BabyFood', isBestSeller: true },
-        { _id: '43', name: 'Baby Stroller Lightweight', price: 149.99, originalPrice: 199.99, rating: 4.5, reviews: 189, stock: 50, images: [getProductImage('Baby Stroller Lightweight', 'Baby Products')], category: 'Baby Products', brand: 'BabyGear', isBestSeller: true },
-        { _id: '44', name: 'Baby Monitor HD', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 123, stock: 75, images: [getProductImage('Baby Monitor HD', 'Baby Products')], category: 'Baby Products', brand: 'BabyTech', isBestSeller: true },
-      ]
-    },
-    { 
-      id: '12', 
-      name: 'Office Products', 
-      icon: '💼', 
-      color: 'bg-blue-600',
-      slug: 'office-products',
-      bestSellers: [
-        { _id: '45', name: 'Wireless Mouse Ergonomic', price: 24.99, originalPrice: 34.99, rating: 4.5, reviews: 234, stock: 120, images: [getProductImage('Wireless Mouse Ergonomic', 'Office Products')], category: 'Office Products', brand: 'OfficePro', isBestSeller: true },
-        { _id: '46', name: 'Desk Lamp LED', price: 39.99, originalPrice: 49.99, rating: 4.4, reviews: 189, stock: 90, images: [getProductImage('Desk Lamp LED', 'Office Products')], category: 'Office Products', brand: 'LightPro', isBestSeller: true },
-        { _id: '47', name: 'Office Chair Ergonomic', price: 199.99, originalPrice: 249.99, rating: 4.7, reviews: 156, stock: 30, images: [getProductImage('Office Chair Ergonomic', 'Office Products')], category: 'Office Products', brand: 'ChairPro', isBestSeller: true },
-        { _id: '48', name: 'Printer All-in-One', price: 89.99, originalPrice: 119.99, rating: 4.6, reviews: 98, stock: 60, images: [getProductImage('Printer All-in-One', 'Office Products')], category: 'Office Products', brand: 'PrintPro', isBestSeller: true },
-      ]
-    },
-  ];
+  // GoSeller categories with best sellers - using shared categories
+  const categoryIcons = {
+    'Electronics': '📱',
+    'Fashion': '👕',
+    'Home': '🏠',
+    'Beauty': '💄',
+    'Sports': '⚽',
+    'Books': '📚',
+    'Automotive': '🚗',
+    'Health': '🏥',
+    'Grocery': '🛒',
+    'Other': '📦'
+  };
+
+  const categoryColors = {
+    'Electronics': 'bg-blue-500',
+    'Fashion': 'bg-pink-500',
+    'Home': 'bg-green-500',
+    'Beauty': 'bg-purple-500',
+    'Sports': 'bg-orange-500',
+    'Books': 'bg-indigo-500',
+    'Automotive': 'bg-gray-500',
+    'Health': 'bg-red-500',
+    'Grocery': 'bg-yellow-500',
+    'Other': 'bg-teal-500'
+  };
+
+  const gosellerCategories = CATEGORIES.map((category, index) => ({
+    id: (index + 1).toString(),
+    name: category,
+    icon: categoryIcons[category as keyof typeof categoryIcons] || '📦',
+    color: categoryColors[category as keyof typeof categoryColors] || 'bg-gray-500',
+    slug: CATEGORY_TO_SLUG_MAPPING[category as keyof typeof CATEGORY_TO_SLUG_MAPPING],
+    bestSellers: [
+      { _id: `${index + 1}`, name: `${category} Product 1`, price: 29.99, originalPrice: 39.99, rating: 4.5, reviews: 123, stock: 50, images: [getProductImage(`${category} Product 1`, category)], category, brand: `${category}Brand`, isBestSeller: true },
+      { _id: `${index + 2}`, name: `${category} Product 2`, price: 49.99, originalPrice: 59.99, rating: 4.3, reviews: 89, stock: 30, images: [getProductImage(`${category} Product 2`, category)], category, brand: `${category}Brand`, isBestSeller: true },
+      { _id: `${index + 3}`, name: `${category} Product 3`, price: 79.99, originalPrice: 99.99, rating: 4.7, reviews: 156, stock: 25, images: [getProductImage(`${category} Product 3`, category)], category, brand: `${category}Brand`, isBestSeller: true },
+      { _id: `${index + 4}`, name: `${category} Product 4`, price: 19.99, originalPrice: 24.99, rating: 4.2, reviews: 67, stock: 100, images: [getProductImage(`${category} Product 4`, category)], category, brand: `${category}Brand`, isBestSeller: true },
+    ]
+  }));
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -359,8 +241,8 @@ const HomePage: React.FC = () => {
     try {
       // Convert DummyProduct to Product for API
       const productForAPI = {
-        _id: product._id,
-        name: product.name,
+        id: product._id,
+        title: product.name,
         description: product.name, // Use name as description for dummy data
         price: product.price,
         originalPrice: product.originalPrice,
@@ -369,12 +251,26 @@ const HomePage: React.FC = () => {
         brand: product.brand || 'Unknown',
         sku: product._id,
         stock: product.stock,
-        rating: product.rating,
-        reviews: product.reviews,
         tags: [product.category],
-        specifications: {},
+        specifications: [],
+        variants: [],
+        sellerId: {
+          id: 'dummy-seller',
+          name: 'Dummy Store',
+          shopName: 'Dummy Store',
+          location: 'Unknown',
+          SQL_level: 'Free',
+          verified: false
+        },
+        SQL_level: 'Free',
+        status: 'approved',
         isActive: true,
-        isFeatured: product.isBestSeller || false,
+        views: 0,
+        sales: 0,
+        rating: {
+          average: product.rating,
+          count: product.reviews
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -416,10 +312,14 @@ const HomePage: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                <span className="text-black font-bold text-sm">G</span>
+              <div className="bg-white rounded-lg p-1">
+                <img 
+                  src="/images/GoSellrLogo.png" 
+                  alt="GoSellr Logo" 
+                  className="h-8 w-auto"
+                />
               </div>
-              <span className="text-xl font-bold">GoSeller</span>
+              {/* <span className="text-xl font-bold">GoSellr</span> */}
             </Link>
 
             {/* Search Bar */}
@@ -621,9 +521,9 @@ const HomePage: React.FC = () => {
                       <div className="text-center text-white">
                         <h1 className="text-4xl font-bold mb-4">{image.title}</h1>
                         <p className="text-xl mb-6">{image.subtitle}</p>
-                        <button className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors">
+                        <Link to="/products" className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors inline-block">
                           Shop Now
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   </div>
