@@ -1,5 +1,7 @@
+"use client"
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   FiShield,
@@ -53,7 +55,7 @@ interface RegistrationForm {
 }
 
 const SellerRegistration: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -368,12 +370,7 @@ const SellerRegistration: React.FC = () => {
 
   const handleGoToDashboard = () => {
     if (successData) {
-      navigate('/store-dashboard', { 
-        state: { 
-          sellerId: successData.sellerId,
-          sqlLevel: successData.sqlLevel 
-        } 
-      });
+      router.push('/store-dashboard');
     }
   };
 
@@ -385,7 +382,7 @@ const SellerRegistration: React.FC = () => {
         <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <Link to="/" className="flex items-center space-x-2">
+              <Link href="/" className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded flex items-center justify-center">
                   <span className="text-white font-bold text-sm">G</span>
                 </div>
@@ -459,7 +456,7 @@ const SellerRegistration: React.FC = () => {
                 </motion.button>
 
                 <Link
-                  to="/seller-login"
+                  href="/seller-login"
                   className="block w-full bg-white border border-gray-300 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
                 >
                   Sign In to Your Account
@@ -495,7 +492,7 @@ const SellerRegistration: React.FC = () => {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-sm">G</span>
               </div>
@@ -503,10 +500,10 @@ const SellerRegistration: React.FC = () => {
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
-              <Link to="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-              <Link to="/seller-dashboard" className="text-gray-600 hover:text-gray-900">Seller Dashboard</Link>
-              <Link to="/seller-login" className="text-gray-600 hover:text-gray-900">Sign In</Link>
-              <Link to="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
+              <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+              <Link href="/seller-dashboard" className="text-gray-600 hover:text-gray-900">Seller Dashboard</Link>
+              <Link href="/seller-login" className="text-gray-600 hover:text-gray-900">Sign In</Link>
+              <Link href="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
             </nav>
           </div>
         </div>

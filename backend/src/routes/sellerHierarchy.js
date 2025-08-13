@@ -8,6 +8,267 @@ const { catchAsync } = require('../utils/catchAsync');
 const router = express.Router();
 
 // ========================================
+// SUPPLY CHAIN MANAGEMENT
+// ========================================
+
+// Add seller to supply chain (Company/Dealer/Wholesaler can add downstream sellers)
+router.post('/add-seller', [
+  body('parentSellerId').isMongoId().withMessage('Valid parent seller ID is required'),
+  body('childSellerId').isMongoId().withMessage('Valid child seller ID is required'),
+  body('relationshipType').isIn(['dealer', 'wholesaler', 'trader', 'storekeeper']).withMessage('Valid relationship type is required'),
+  body('territories').isArray().withMessage('Territories must be an array'),
+  body('territories.*').isString().withMessage('Each territory must be a string'),
+  body('commissionRate').optional().isFloat({ min: 0, max: 100 }).withMessage('Commission rate must be between 0 and 100'),
+  body('contractTerms').optional().isObject().withMessage('Contract terms must be an object')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { 
+    parentSellerId, 
+    childSellerId, 
+    relationshipType, 
+    territories, 
+    commissionRate,
+    contractTerms 
+  } = req.body;
+
+  // Verify parent seller exists and has permission
+  const parentSeller = await Seller.findById(parentSellerId);
+  if (!parentSeller) {
+    throw new ApiError(404, 'Parent seller not found');
+  }
+
+  // Check hierarchy permissions
+  const allowedRelationships = {
+    'Company': ['dealer', 'wholesaler', 'trader', 'storekeeper'],
+    'Dealer': ['wholesaler', 'trader', 'storekeeper'],
+    'Wholesaler': ['trader', 'storekeeper'],
+    'Trader': ['storekeeper']
+  };
+
+  if (!allowedRelationships[parentSeller.sellerCategory]?.includes(relationshipType)) {
+    throw new ApiError(403, `${parentSeller.sellerCategory} cannot add ${relationshipType} to their hierarchy`);
+  }
+
+  // Verify child seller exists and is the correct type
+  const childSeller = await Seller.findById(childSellerId);
+  if (!childSeller) {
+    throw new ApiError(404, 'Child seller not found');
+  }
+
+  if (childSeller.sellerCategory.toLowerCase() !== relationshipType) {
+    throw new ApiError(400, `Child seller must be a ${relationshipType}`);
+  }
+
+  // Check if relationship already exists
+  if (childSeller.supplyChain.parentCompany === parentSellerId) {
+    throw new ApiError(409, 'Relationship already exists');
+  }
+
+  // Update parent seller's supply chain
+  const childField = `${relationshipType}s`;
+  if (!parentSeller.supplyChain[childField]) {
+    parentSeller.supplyChain[childField] = [];
+  }
+  parentSeller.supplyChain[childField].push(childSellerId);
+
+  // Update child seller's supply chain
+  childSeller.supplyChain.parentCompany = parentSellerId;
+  childSeller.supplyChain.authorizedTerritories = territories;
+  childSeller.supplyChain.relationshipConfig = {
+    type: relationshipType,
+    parentSeller: parentSellerId,
+    commissionRate: commissionRate || 0,
+    contractTerms: contractTerms || {},
+    addedAt: new Date()
+  };
+
+  await Promise.all([parentSeller.save(), childSeller.save()]);
+
+  res.json(new ApiResponse(200, `${relationshipType} added to supply chain successfully`, {
+    parentSeller: {
+      id: parentSeller._id,
+      name: parentSeller.name,
+      businessName: parentSeller.shopName
+    },
+    childSeller: {
+      id: childSeller._id,
+      name: childSeller.name,
+      businessName: childSeller.shopName,
+      territories: childSeller.supplyChain.authorizedTerritories,
+      commissionRate: childSeller.supplyChain.relationshipConfig.commissionRate
+    }
+  }));
+}));
+
+// Remove seller from supply chain
+router.delete('/remove-seller/:parentSellerId/:childSellerId', catchAsync(async (req, res) => {
+  const { parentSellerId, childSellerId } = req.params;
+
+  const parentSeller = await Seller.findById(parentSellerId);
+  if (!parentSeller) {
+    throw new ApiError(404, 'Parent seller not found');
+  }
+
+  const childSeller = await Seller.findById(childSellerId);
+  if (!childSeller) {
+    throw new ApiError(404, 'Child seller not found');
+  }
+
+  // Find the relationship type
+  let relationshipType = null;
+  for (const [key, value] of Object.entries(parentSeller.supplyChain)) {
+    if (Array.isArray(value) && value.includes(childSellerId)) {
+      relationshipType = key;
+      break;
+    }
+  }
+
+  if (!relationshipType) {
+    throw new ApiError(404, 'Relationship not found');
+  }
+
+  // Remove from parent's supply chain
+  parentSeller.supplyChain[relationshipType] = parentSeller.supplyChain[relationshipType]
+    .filter(id => id.toString() !== childSellerId);
+
+  // Clear child's parent relationship
+  childSeller.supplyChain.parentCompany = null;
+  childSeller.supplyChain.authorizedTerritories = [];
+  childSeller.supplyChain.relationshipConfig = {};
+
+  await Promise.all([parentSeller.save(), childSeller.save()]);
+
+  res.json(new ApiResponse(200, 'Seller removed from supply chain successfully'));
+}));
+
+// Get seller's network overview
+router.get('/network/:sellerId', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+
+  const seller = await Seller.findById(sellerId);
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  const network = {
+    seller: {
+      id: seller._id,
+      name: seller.name,
+      businessName: seller.shopName,
+      category: seller.sellerCategory,
+      location: seller.location
+    },
+    upstream: null,
+    downstream: {
+      dealers: [],
+      wholesalers: [],
+      traders: [],
+      storekeepers: []
+    },
+    networkStats: {
+      totalDownstream: 0,
+      totalProducts: 0,
+      totalRevenue: 0
+    }
+  };
+
+  // Get upstream seller (parent)
+  if (seller.supplyChain.parentCompany) {
+    const parent = await Seller.findById(seller.supplyChain.parentCompany)
+      .select('name shopName sellerCategory location');
+    network.upstream = parent;
+  }
+
+  // Get downstream sellers
+  for (const type of ['dealers', 'wholesalers', 'traders', 'storekeepers']) {
+    if (seller.supplyChain[type] && seller.supplyChain[type].length > 0) {
+      const downstreamSellers = await Seller.find({ _id: { $in: seller.supplyChain[type] } })
+        .select('name shopName sellerCategory location status verified createdAt');
+      network.downstream[type] = downstreamSellers;
+      network.networkStats.totalDownstream += downstreamSellers.length;
+    }
+  }
+
+  // Get network statistics
+  const Product = require('../models/Product');
+  const networkProductCount = await Product.countDocuments({
+    sellerId: { $in: [sellerId, ...Object.values(seller.supplyChain).flat().filter(Array.isArray)] }
+  });
+  network.networkStats.totalProducts = networkProductCount;
+
+  res.json(new ApiResponse(200, 'Network overview retrieved successfully', { network }));
+}));
+
+// Get seller's supply chain analytics
+router.get('/analytics/:sellerId', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  const { period = '30d' } = req.query;
+
+  const seller = await Seller.findById(sellerId);
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  const now = new Date();
+  let startDate;
+  
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  // Get all downstream seller IDs
+  const downstreamIds = Object.values(seller.supplyChain)
+    .flat()
+    .filter(Array.isArray)
+    .flat();
+
+  const analytics = {
+    period,
+    startDate,
+    endDate: now,
+    networkGrowth: {
+      totalSellers: downstreamIds.length + 1,
+      newSellers: 0,
+      activeSellers: 0
+    },
+    revenueDistribution: {
+      direct: 0,
+      network: 0,
+      total: 0
+    },
+    topPerformers: [],
+    categoryDistribution: {}
+  };
+
+  // Get network growth data
+  if (downstreamIds.length > 0) {
+    const downstreamSellers = await Seller.find({ _id: { $in: downstreamIds } });
+    analytics.networkGrowth.newSellers = downstreamSellers.filter(s => 
+      s.createdAt >= startDate
+    ).length;
+    analytics.networkGrowth.activeSellers = downstreamSellers.filter(s => 
+      s.status === 'active'
+    ).length;
+  }
+
+  res.json(new ApiResponse(200, 'Supply chain analytics retrieved successfully', { analytics }));
+}));
+
+// ========================================
 // SELLER HIERARCHY MANAGEMENT
 // ========================================
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   FiDollarSign,
@@ -282,7 +282,7 @@ const SellerDashboard: React.FC = () => {
           <header className="bg-white shadow-sm border-b">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-16">
-                <Link to="/" className="flex items-center space-x-2">
+                <Link href="/" className="flex items-center space-x-2">
                   <div className="bg-white rounded-lg p-1">
                     <img 
                       src="/images/GoSellrLogo.png" 
@@ -293,9 +293,9 @@ const SellerDashboard: React.FC = () => {
                 </Link>
                 
                 <nav className="hidden md:flex items-center space-x-8">
-                  <Link to="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-                  <Link to="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
-                  <Link to="/seller-login" className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors">
+                  <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+                  <Link href="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
+                  <Link href="/seller-login" className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors">
                     Sign In
                   </Link>
                 </nav>
@@ -441,7 +441,7 @@ const SellerDashboard: React.FC = () => {
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Upgrade Now</p>
                     <Link 
-                      to="/sql-verification"
+                      href="/sql-verification"
                       className="inline-flex items-center space-x-2 text-orange-600 hover:text-orange-700 transition-colors"
                     >
                       <span className="text-sm font-medium">Complete Verification</span>
@@ -469,7 +469,7 @@ const SellerDashboard: React.FC = () => {
               Join thousands of successful sellers and reach millions of customers worldwide
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/seller-registration" className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors">
+              <Link href="/seller-registration" className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors">
                 Start Selling Today
               </Link>
               <button className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-orange-500 transition-colors">
@@ -687,7 +687,7 @@ const SellerDashboard: React.FC = () => {
             Join thousands of successful sellers and start your journey to business success
           </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/seller-registration" className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center">
+            <Link href="/seller-registration" className="bg-white text-orange-500 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center">
               Start Selling Now
               <FiArrowRight className="ml-2" />
             </Link>
@@ -705,40 +705,40 @@ const SellerDashboard: React.FC = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4">Sell on GoSeller</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><Link to="/seller-guide" className="hover:text-white">Seller Guide</Link></li>
-                <li><Link to="/fees" className="hover:text-white">Fees & Pricing</Link></li>
-                <li><Link to="/fulfillment" className="hover:text-white">Fulfillment</Link></li>
-                <li><Link to="/advertising" className="hover:text-white">Advertising</Link></li>
+                <li><Link href="/seller-guide" className="hover:text-white">Seller Guide</Link></li>
+                <li><Link href="/fees" className="hover:text-white">Fees & Pricing</Link></li>
+                <li><Link href="/fulfillment" className="hover:text-white">Fulfillment</Link></li>
+                <li><Link href="/advertising" className="hover:text-white">Advertising</Link></li>
               </ul>
                   </div>
 
             <div>
               <h3 className="text-lg font-semibold mb-4">Support</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><Link to="/help" className="hover:text-white">Help Center</Link></li>
-                <li><Link to="/contact" className="hover:text-white">Contact Us</Link></li>
-                <li><Link to="/community" className="hover:text-white">Seller Community</Link></li>
-                <li><Link to="/training" className="hover:text-white">Training</Link></li>
+                <li><Link href="/help" className="hover:text-white">Help Center</Link></li>
+                <li><Link href="/contact" className="hover:text-white">Contact Us</Link></li>
+                <li><Link href="/community" className="hover:text-white">Seller Community</Link></li>
+                <li><Link href="/training" className="hover:text-white">Training</Link></li>
               </ul>
             </div>
             
             <div>
               <h3 className="text-lg font-semibold mb-4">Resources</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><Link to="/blog" className="hover:text-white">Seller Blog</Link></li>
-                <li><Link to="/events" className="hover:text-white">Events</Link></li>
-                <li><Link to="/partners" className="hover:text-white">Partners</Link></li>
-                <li><Link to="/api" className="hover:text-white">API</Link></li>
+                <li><Link href="/blog" className="hover:text-white">Seller Blog</Link></li>
+                <li><Link href="/events" className="hover:text-white">Events</Link></li>
+                <li><Link href="/partners" className="hover:text-white">Partners</Link></li>
+                <li><Link href="/api" className="hover:text-white">API</Link></li>
               </ul>
                   </div>
             
             <div>
               <h3 className="text-lg font-semibold mb-4">Legal</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><Link to="/terms" className="hover:text-white">Terms of Service</Link></li>
-                <li><Link to="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-                <li><Link to="/cookies" className="hover:text-white">Cookie Policy</Link></li>
-                <li><Link to="/accessibility" className="hover:text-white">Accessibility</Link></li>
+                <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
+                <li><Link href="/cookies" className="hover:text-white">Cookie Policy</Link></li>
+                <li><Link href="/accessibility" className="hover:text-white">Accessibility</Link></li>
               </ul>
             </div>
           </div>

@@ -1,6 +1,18 @@
+"use client";
+
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { User } from '../services/api';
-import apiService from '../services/api';
+import { safeLocalStorage } from '@/utils/localStorage';
+import { authAPI } from '../services/api';
+
+// User interface
+interface User {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  role?: string;
+}
 
 // Auth State Interface
 interface AuthState {
@@ -37,7 +49,7 @@ interface AuthContextType extends AuthState {
 // Initial State
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('authToken'),
+  token: null,
   isAuthenticated: false,
   isLoading: true,
   error: null,
@@ -109,22 +121,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if user is authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
+      const token = safeLocalStorage.getItem('authToken');
       if (token) {
         try {
           dispatch({ type: 'AUTH_START' });
-          const response = await apiService.getCurrentUser();
-          if (response.success) {
-            dispatch({
-              type: 'AUTH_SUCCESS',
-              payload: { user: response.data, token },
-            });
-          } else {
-            localStorage.removeItem('authToken');
-            dispatch({ type: 'AUTH_FAILURE', payload: 'Session expired' });
-          }
+          const response = await authAPI.getCurrentUser();
+          dispatch({
+            type: 'AUTH_SUCCESS',
+            payload: { user: response.user, token },
+          });
         } catch (error) {
-          localStorage.removeItem('authToken');
+          safeLocalStorage.removeItem('authToken');
           dispatch({ type: 'AUTH_FAILURE', payload: 'Authentication failed' });
         }
       } else {
@@ -139,16 +146,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       dispatch({ type: 'AUTH_START' });
-      const response = await apiService.login(email, password);
-      if (response.success) {
-        localStorage.setItem('authToken', response.data.token);
-        dispatch({
-          type: 'AUTH_SUCCESS',
-          payload: { user: response.data.user, token: response.data.token },
-        });
-      } else {
-        dispatch({ type: 'AUTH_FAILURE', payload: response.message || 'Login failed' });
-      }
+      const response = await authAPI.login({ email, password });
+      safeLocalStorage.setItem('authToken', response.token);
+      dispatch({
+        type: 'AUTH_SUCCESS',
+        payload: { user: response.user, token: response.token },
+      });
     } catch (error: any) {
       dispatch({
         type: 'AUTH_FAILURE',
@@ -157,58 +160,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Register function
+  // Register function (placeholder for now)
   const register = async (userData: {
     email: string;
     password: string;
     firstName: string;
     lastName: string;
   }) => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-      const response = await apiService.register(userData);
-      if (response.success) {
-        localStorage.setItem('authToken', response.data.token);
-        dispatch({
-          type: 'AUTH_SUCCESS',
-          payload: { user: response.data.user, token: response.data.token },
-        });
-      } else {
-        dispatch({ type: 'AUTH_FAILURE', payload: response.message || 'Registration failed' });
-      }
-    } catch (error: any) {
-      dispatch({
-        type: 'AUTH_FAILURE',
-        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Registration failed',
-      });
-    }
+    // TODO: Implement registration
+    console.log('Registration not implemented yet');
   };
 
   // Logout function
   const logout = async () => {
     try {
-      await apiService.logout();
+      await authAPI.logout();
     } catch (error) {
       // Continue with logout even if API call fails
     } finally {
-      localStorage.removeItem('authToken');
+      safeLocalStorage.removeItem('authToken');
       dispatch({ type: 'AUTH_LOGOUT' });
     }
   };
 
-  // Update profile function
+  // Update profile function (placeholder for now)
   const updateProfile = async (userData: Partial<User>) => {
-    try {
-      const response = await apiService.updateProfile(userData);
-      if (response.success) {
-        dispatch({ type: 'UPDATE_USER', payload: response.data });
-      }
-    } catch (error: any) {
-      dispatch({
-        type: 'AUTH_FAILURE',
-        payload: error.response?.data?.error?.message || error.response?.data?.message || 'Profile update failed',
-      });
-    }
+    // TODO: Implement profile update
+    console.log('Profile update not implemented yet');
   };
 
   // Clear error function

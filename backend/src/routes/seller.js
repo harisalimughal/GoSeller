@@ -21,7 +21,261 @@ const upload = multer({
 });
 
 // ========================================
-// SELLER AUTHENTICATION
+// SELLER MANAGEMENT & SUPPLY CHAIN
+// ========================================
+
+// Get seller's supply chain overview
+router.get('/supply-chain/:sellerId', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+
+  const seller = await Seller.findById(sellerId);
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  const supplyChain = {
+    seller: {
+      id: seller._id,
+      name: seller.name,
+      businessName: seller.shopName,
+      category: seller.sellerCategory,
+      location: seller.location,
+      status: seller.status,
+      verified: seller.verified
+    },
+    parentCompany: null,
+    downstream: {
+      dealers: [],
+      wholesalers: [],
+      traders: [],
+      storekeepers: []
+    },
+    statistics: {
+      totalDownstream: 0,
+      totalProducts: 0,
+      networkRevenue: 0
+    }
+  };
+
+  // Get parent company if exists
+  if (seller.supplyChain.parentCompany) {
+    const parent = await Seller.findById(seller.supplyChain.parentCompany)
+      .select('name shopName sellerCategory location status verified');
+    supplyChain.parentCompany = parent;
+  }
+
+  // Get downstream sellers
+  for (const type of ['dealers', 'wholesalers', 'traders', 'storekeepers']) {
+    if (seller.supplyChain[type] && seller.supplyChain[type].length > 0) {
+      const downstreamSellers = await Seller.find({ _id: { $in: seller.supplyChain[type] } })
+        .select('name shopName sellerCategory location status verified createdAt');
+      supplyChain.downstream[type] = downstreamSellers;
+      supplyChain.statistics.totalDownstream += downstreamSellers.length;
+    }
+  }
+
+  // Get product count
+  const Product = require('../models/Product');
+  const productCount = await Product.countDocuments({ sellerId });
+  supplyChain.statistics.totalProducts = productCount;
+
+  res.json(new ApiResponse(200, 'Supply chain overview retrieved successfully', { supplyChain }));
+}));
+
+// Get seller's products with advanced filtering
+router.get('/products/:sellerId/manage', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  const { 
+    page = 1, 
+    limit = 20, 
+    status, 
+    category, 
+    search, 
+    sortBy = 'createdAt', 
+    sortOrder = 'desc',
+    minPrice,
+    maxPrice,
+    inStock
+  } = req.query;
+
+  const query = { sellerId };
+
+  // Add filters
+  if (status) query.status = status;
+  if (category) query.category = category;
+  if (search) {
+    query.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+      { brand: { $regex: search, $options: 'i' } },
+      { sku: { $regex: search, $options: 'i' } }
+    ];
+  }
+  if (minPrice || maxPrice) {
+    query.price = {};
+    if (minPrice) query.price.$gte = parseFloat(minPrice);
+    if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+  }
+  if (inStock === 'true') query.stock = { $gt: 0 };
+  if (inStock === 'false') query.stock = { $lte: 0 };
+
+  // Build sort object
+  const sort = {};
+  sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+  const Product = require('../models/Product');
+  const products = await Product.find(query)
+    .sort(sort)
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .populate('categoryId', 'name');
+
+  const total = await Product.countDocuments(query);
+
+  res.json(new ApiResponse(200, 'Seller products retrieved successfully', {
+    products,
+    pagination: {
+      current: parseInt(page),
+      pages: Math.ceil(total / limit),
+      total,
+      limit: parseInt(limit)
+    }
+  }));
+}));
+
+// Get seller's product statistics
+router.get('/products/:sellerId/stats', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+
+  const Product = require('../models/Product');
+  
+  const stats = await Product.aggregate([
+    { $match: { sellerId: require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: null,
+        totalProducts: { $sum: 1 },
+        activeProducts: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+        inactiveProducts: { $sum: { $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0] } },
+        draftProducts: { $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] } },
+        totalStock: { $sum: '$stock' },
+        lowStockProducts: { $sum: { $cond: [{ $lte: ['$stock', 10] }, 1, 0] } },
+        outOfStockProducts: { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
+        averagePrice: { $avg: '$price' },
+        totalValue: { $sum: { $multiply: ['$price', '$stock'] } }
+      }
+    }
+  ]);
+
+  // Get category distribution
+  const categoryDistribution = await Product.aggregate([
+    { $match: { sellerId: require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: '$category',
+        count: { $sum: 1 },
+        totalStock: { $sum: '$stock' },
+        averagePrice: { $avg: '$price' }
+      }
+    },
+    { $sort: { count: -1 } }
+  ]);
+
+  // Get price range
+  const priceRange = await Product.aggregate([
+    { $match: { sellerId: require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: null,
+        minPrice: { $min: '$price' },
+        maxPrice: { $max: '$price' }
+      }
+    }
+  ]);
+
+  res.json(new ApiResponse(200, 'Product statistics retrieved successfully', {
+    stats: stats[0] || {},
+    categoryDistribution,
+    priceRange: priceRange[0] || {}
+  }));
+}));
+
+// Get seller's network performance
+router.get('/network/:sellerId/performance', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  const { period = '30d' } = req.query;
+
+  const seller = await Seller.findById(sellerId);
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found');
+  }
+
+  const now = new Date();
+  let startDate;
+  
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  // Get all downstream seller IDs
+  const downstreamIds = Object.values(seller.supplyChain)
+    .flat()
+    .filter(Array.isArray)
+    .flat();
+
+  const performance = {
+    period,
+    startDate,
+    endDate: now,
+    networkGrowth: {
+      totalSellers: downstreamIds.length + 1,
+      newSellers: 0,
+      activeSellers: 0,
+      growthRate: 0
+    },
+    revenueMetrics: {
+      directRevenue: 0,
+      networkRevenue: 0,
+      totalRevenue: 0,
+      averageRevenuePerSeller: 0
+    },
+    topPerformers: [],
+    categoryPerformance: {}
+  };
+
+  // Get network growth data
+  if (downstreamIds.length > 0) {
+    const downstreamSellers = await Seller.find({ _id: { $in: downstreamIds } });
+    performance.networkGrowth.newSellers = downstreamSellers.filter(s => 
+      s.createdAt >= startDate
+    ).length;
+    performance.networkGrowth.activeSellers = downstreamSellers.filter(s => 
+      s.status === 'active'
+    ).length;
+    
+    // Calculate growth rate
+    const previousPeriod = new Date(startDate.getTime() - (now.getTime() - startDate.getTime()));
+    const previousSellers = downstreamSellers.filter(s => s.createdAt < startDate && s.createdAt >= previousPeriod);
+    performance.networkGrowth.growthRate = previousSellers.length > 0 
+      ? ((performance.networkGrowth.newSellers - previousSellers.length) / previousSellers.length) * 100 
+      : 0;
+  }
+
+  res.json(new ApiResponse(200, 'Network performance retrieved successfully', { performance }));
+}));
+
+// ========================================
+// SELLER AUTHENTICATION & PROFILE
 // ========================================
 
 // Seller login
@@ -107,102 +361,102 @@ router.post('/logout', catchAsync(async (req, res) => {
 // SELLER REGISTRATION & PROFILE
 // ========================================
 
-// Register new seller
-router.post('/register', [
-  body('businessName').trim().notEmpty().withMessage('Business name is required'),
-  body('businessType').isIn(['individual', 'company', 'partnership']).withMessage('Valid business type is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').isMobilePhone().withMessage('Valid phone number is required'),
-  body('address').isObject().withMessage('Address is required'),
-  body('documents').isArray().withMessage('Documents are required'),
-  body('bankDetails').isObject().withMessage('Bank details are required')
-], catchAsync(async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    // Format validation errors for better user experience
-    const formattedErrors = errors.array().map(error => ({
-      field: error.path,
-      message: error.msg,
-      value: error.value
-    }));
+// Register new seller - MOVED TO sellerRegistration.js to avoid conflicts
+// router.post('/register', [
+//   body('businessName').trim().notEmpty().withMessage('Business name is required'),
+//   body('businessType').isIn(['individual', 'company', 'partnership']).withMessage('Valid business type is required'),
+//   body('email').isEmail().withMessage('Valid email is required'),
+//   body('phone').isMobilePhone().withMessage('Valid phone number is required'),
+//   body('address').isObject().withMessage('Address is required'),
+//   body('documents').isArray().withMessage('Documents are required'),
+//   body('bankDetails').isObject().withMessage('Bank details are required')
+// ], catchAsync(async (req, res) => {
+//   const errors = validationResult(req);
+//   if (!errors.isEmpty()) {
+//     // Format validation errors for better user experience
+//     const formattedErrors = errors.array().map(error => ({
+//       field: error.path,
+//       message: error.msg,
+//       value: error.value
+//     }));
     
-    throw new ApiError(400, 'Please check the following fields:', formattedErrors);
-  }
+//     throw new ApiError(400, 'Please check the following fields:', formattedErrors);
+//   }
 
-  const {
-    businessName,
-    businessType,
-    email,
-    phone,
-    address,
-    documents,
-    bankDetails,
-    description,
-    categories,
-    socialMedia
-  } = req.body;
+//   const {
+//     businessName,
+//     businessType,
+//     email,
+//     phone,
+//     address,
+//     documents,
+//     bankDetails,
+//     description,
+//     categories,
+//     socialMedia
+//   } = req.body;
 
-  // Check if seller already exists with more specific error messages
-  const existingSellerByEmail = await Seller.findOne({ email });
-  const existingSellerByPhone = await Seller.findOne({ phone });
+//   // Check if seller already exists with more specific error messages
+//   const existingSellerByEmail = await Seller.findOne({ email });
+//   const existingSellerByPhone = await Seller.findOne({ phone });
 
-  if (existingSellerByEmail && existingSellerByPhone) {
-    throw new ApiError(409, 'A seller account already exists with both this email and phone number. Please use different credentials or contact support for assistance.');
-  } else if (existingSellerByEmail) {
-    throw new ApiError(409, 'A seller account already exists with this email address. Please use a different email or try logging in if you already have an account.');
-  } else if (existingSellerByPhone) {
-    throw new ApiError(409, 'A seller account already exists with this phone number. Please use a different phone number or try logging in if you already have an account.');
-  }
+//   if (existingSellerByEmail && existingSellerByPhone) {
+//     throw new ApiError(409, 'A seller account already exists with both this email and phone number. Please use different credentials or contact support for assistance.');
+//   } else if (existingSellerByEmail) {
+//     throw new ApiError(409, 'A seller account already exists with this email address. Please use a different email or try logging in if you already have an account.');
+//   } else if (existingSellerByPhone) {
+//     throw new ApiError(409, 'A seller account already exists with this phone number. Please use a different phone number or try logging in if you already have an account.');
+//   }
 
-  // Create seller
-  const seller = new Seller({
-    userId: req.user?.userId || 'temp_user_id',
-    name: businessName, // Required field
-    email,
-    password: 'temp_password_' + Date.now(), // Required field - will be updated later
-    contact: phone, // Required field
-    location: `${address.city || ''}, ${address.state || ''}, ${address.country || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, ''),
-    sellerType: 'store', // Required field
-    shopName: businessName, // Required field
-    businessName,
-    businessType,
-    address,
-    documents,
-    bankDetails,
-    description,
-    categories,
-    socialMedia,
-    status: 'pending',
-    verificationStatus: 'pending'
-  });
+//   // Create seller
+//   const seller = new Seller({
+//     userId: req.user?.userId || 'temp_user_id',
+//     name: businessName, // Required field
+//     email,
+//     password: 'temp_password_' + Date.now(), // Required field - will be updated later
+//     contact: phone, // Required field
+//     location: `${address.city || ''}, ${address.state || ''}, ${address.country || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, ''),
+//     sellerType: 'store', // Required field
+//     shopName: businessName, // Required field
+//     businessName,
+//     businessType,
+//     address,
+//     documents,
+//     bankDetails,
+//     description,
+//     categories,
+//     socialMedia,
+//     status: 'pending',
+//     verificationStatus: 'pending'
+//   });
 
-  try {
-    await seller.save();
-  } catch (saveError) {
-    console.error('Seller save error:', saveError);
+//   try {
+//     await seller.save();
+//   } catch (saveError) {
+//     console.error('Seller save error:', saveError);
     
-    // Handle specific database errors
-    if (saveError.code === 11000) {
-      // Duplicate key error - this shouldn't happen since we checked above, but handle it anyway
-      const field = Object.keys(saveError.keyValue)[0];
-      throw new ApiError(409, `A seller account already exists with this ${field}. Please use different credentials.`);
-    } else if (saveError.name === 'ValidationError') {
-      const validationErrors = Object.values(saveError.errors).map(err => err.message).join(', ');
-      throw new ApiError(400, `Validation failed: ${validationErrors}`);
-    } else {
-      throw new ApiError(500, 'Failed to create seller account. Please try again or contact support.');
-    }
-  }
+//     // Handle specific database errors
+//     if (saveError.code === 11000) {
+//       // Duplicate key error - this shouldn't happen since we checked above, but handle it anyway
+//       const field = Object.keys(saveError.keyValue)[0];
+//       throw new ApiError(409, `A seller account already exists with this ${field}. Please use different credentials.`);
+//     } else if (saveError.name === 'ValidationError') {
+//       const validationErrors = Object.values(saveError.errors).map(err => err.message).join(', ');
+//       throw new ApiError(400, `Validation failed: ${validationErrors}`);
+//     } else {
+//       throw new ApiError(500, 'Failed to create seller account. Please try again or contact support.');
+//     }
+//   }
 
-  res.status(201).json(new ApiResponse(201, 'Seller registration successful', {
-    seller: {
-      id: seller._id,
-      businessName: seller.businessName,
-      status: seller.status,
-      verificationStatus: seller.verificationStatus
-    }
-  }));
-}));
+//   res.status(201).json(new ApiResponse(201, 'Seller registration successful', {
+//     seller: {
+//       id: seller._id,
+//       businessName: seller.businessName,
+//       status: seller.status,
+//       verificationStatus: seller.verificationStatus
+//     }
+//   }));
+// }));
 
 // Get seller profile
 router.get('/profile', sellerAuth, catchAsync(async (req, res) => {
@@ -780,7 +1034,7 @@ router.post('/submit-documents/:section', sellerAuth, upload.fields([
             console.log(`Uploading ${fieldName} to Cloudinary...`);
             const result = await cloudinaryService.uploadFile(file.buffer, {
               folder: `seller-documents/${section}`,
-              public_id: `${sellerId}_${fieldName}_${Date.now()}`,
+              public_id: `${seller._id}_${fieldName}_${Date.now()}`,
               resource_type: 'auto'
             });
             console.log(`Upload successful for ${fieldName}:`, result.url);
@@ -841,7 +1095,7 @@ router.post('/submit-documents/:section', sellerAuth, upload.fields([
 
       // Update seller with document URLs and verification status
       await Seller.findByIdAndUpdate(
-        sellerId,
+        seller._id,
         { 
           $set: allUpdates,
           $currentDate: { updatedAt: true }
@@ -849,11 +1103,11 @@ router.post('/submit-documents/:section', sellerAuth, upload.fields([
         { new: true, runValidators: false }
       );
 
-      console.log(`${section.toUpperCase()} documents saved successfully for seller:`, sellerId);
+      console.log(`${section.toUpperCase()} documents saved successfully for seller:`, seller._id);
       console.log('Documents uploaded:', Object.keys(uploadedDocs));
 
       res.json(new ApiResponse(200, `${section.toUpperCase()} documents submitted successfully`, {
-        sellerId: sellerId,
+        sellerId: seller._id,
         section: section,
         documentsSubmitted: Object.keys(uploadedDocs),
         submittedAt: new Date()
@@ -901,7 +1155,7 @@ router.post('/submit-documents', sellerAuth, upload.fields([
           console.log(`Uploading ${fieldName} to Cloudinary...`);
           const result = await cloudinaryService.uploadFile(file.buffer, {
             folder: 'seller-documents',
-            public_id: `${sellerId}_${fieldName}_${Date.now()}`,
+            public_id: `${seller._id}_${fieldName}_${Date.now()}`,
             resource_type: 'auto'
           });
           console.log(`Upload successful for ${fieldName}:`, result.url);
@@ -960,7 +1214,7 @@ router.post('/submit-documents', sellerAuth, upload.fields([
 
     // Update seller with document URLs and verification status
     await Seller.findByIdAndUpdate(
-      sellerId,
+      seller._id,
       { 
         $set: allUpdates,
         $currentDate: { updatedAt: true }
@@ -968,11 +1222,11 @@ router.post('/submit-documents', sellerAuth, upload.fields([
       { new: true, runValidators: false }
     );
 
-    console.log('Documents saved successfully for seller:', sellerId);
+    console.log('Documents saved successfully for seller:', seller._id);
     console.log('Documents uploaded:', Object.keys(uploadedDocs));
 
     res.json(new ApiResponse(200, 'Documents submitted successfully', {
-      sellerId: sellerId,
+      sellerId: seller._id,
       documentsSubmitted: Object.keys(uploadedDocs),
       submittedAt: new Date()
     }));

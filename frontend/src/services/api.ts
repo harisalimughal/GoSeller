@@ -15,9 +15,11 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -32,8 +34,10 @@ api.interceptors.response.use(
   (error) => {
     // Don't redirect for seller login attempts - let the component handle the error
     if (error.response?.status === 401 && !error.config?.url?.includes('/seller/login')) {
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -891,13 +895,17 @@ export const authAPI = {
   login: async (data: LoginData): Promise<AuthResponse> => {
     const response = await api.post('/auth/login', data);
     const { token, user } = response.data;
-    localStorage.setItem('authToken', token);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token);
+    }
     return { token, user };
   },
 
   // Logout
   logout: () => {
-    localStorage.removeItem('authToken');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+    }
   },
 
   // Get current user
@@ -922,12 +930,18 @@ export const apiUtils = {
 
   // Check if user is authenticated
   isAuthenticated: (): boolean => {
-    return !!localStorage.getItem('authToken');
+    if (typeof window !== 'undefined') {
+      return !!localStorage.getItem('authToken');
+    }
+    return false;
   },
 
   // Get auth token
   getToken: (): string | null => {
-    return localStorage.getItem('authToken');
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('authToken');
+    }
+    return null;
   },
 };
 

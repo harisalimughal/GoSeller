@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { safeLocalStorage } from '@/utils/localStorage'
 
 interface User {
   id: string
@@ -17,7 +18,7 @@ interface AuthState {
 
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('token'),
+  token: null,
   isAuthenticated: false,
   loading: false,
   error: null,
@@ -37,7 +38,7 @@ const authSlice = createSlice({
       state.token = action.payload.token
       state.isAuthenticated = true
       state.error = null
-      localStorage.setItem('token', action.payload.token)
+      safeLocalStorage.setItem('token', action.payload.token)
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.loading = false
@@ -49,7 +50,7 @@ const authSlice = createSlice({
       state.token = null
       state.isAuthenticated = false
       state.error = null
-      localStorage.removeItem('token')
+      safeLocalStorage.removeItem('token')
     },
     clearError: (state) => {
       state.error = null

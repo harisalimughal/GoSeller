@@ -28,6 +28,334 @@ const upload = multer({
 });
 
 // ========================================
+// SELLER PRODUCT MANAGEMENT
+// ========================================
+
+// Get seller's products with advanced filtering and pagination
+router.get('/seller/:sellerId/manage', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  const { 
+    page = 1, 
+    limit = 20, 
+    status, 
+    category, 
+    search, 
+    sortBy = 'createdAt', 
+    sortOrder = 'desc' 
+  } = req.query;
+  
+  const query = { sellerId };
+  
+  // Add filters
+  if (status) query.status = status;
+  if (category) query.category = category;
+  if (search) {
+    query.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+      { brand: { $regex: search, $options: 'i' } },
+      { sku: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  // Build sort object
+  const sort = {};
+  sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+  const products = await Product.find(query)
+    .sort(sort)
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .populate('categoryId', 'name');
+
+  const total = await Product.countDocuments(query);
+
+  res.json(new ApiResponse(200, 'Seller products retrieved successfully', {
+    products,
+    pagination: {
+      current: parseInt(page),
+      pages: Math.ceil(total / limit),
+      total,
+      limit: parseInt(limit)
+    }
+  }));
+}));
+
+// Get seller's product statistics
+router.get('/seller/:sellerId/stats', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+
+  const stats = await Product.aggregate([
+    { $match: { sellerId: new require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: null,
+        totalProducts: { $sum: 1 },
+        activeProducts: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+        inactiveProducts: { $sum: { $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0] } },
+        draftProducts: { $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] } },
+        totalStock: { $sum: '$stock' },
+        lowStockProducts: { $sum: { $cond: [{ $lte: ['$stock', 10] }, 1, 0] } },
+        outOfStockProducts: { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
+        averagePrice: { $avg: '$price' },
+        totalValue: { $sum: { $multiply: ['$price', '$stock'] } }
+      }
+    }
+  ]);
+
+  // Get category distribution
+  const categoryDistribution = await Product.aggregate([
+    { $match: { sellerId: new require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: '$category',
+        count: { $sum: 1 },
+        totalStock: { $sum: '$stock' },
+        averagePrice: { $avg: '$price' }
+      }
+    },
+    { $sort: { count: -1 } }
+  ]);
+
+  // Get price range
+  const priceRange = await Product.aggregate([
+    { $match: { sellerId: new require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: null,
+        minPrice: { $min: '$price' },
+        maxPrice: { $max: '$price' }
+      }
+    }
+  ]);
+
+  res.json(new ApiResponse(200, 'Product statistics retrieved successfully', {
+    stats: stats[0] || {},
+    categoryDistribution,
+    priceRange: priceRange[0] || {}
+  }));
+}));
+
+// Update product status (for seller)
+router.patch('/seller/:sellerId/:productId/status', [
+  body('status').isIn(['active', 'inactive', 'draft', 'archived']).withMessage('Valid status is required'),
+  body('reason').optional().isString().withMessage('Reason must be a string')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { sellerId, productId } = req.params;
+  const { status, reason } = req.body;
+
+  const product = await Product.findOne({ _id: productId, sellerId });
+  if (!product) {
+    throw new ApiError(404, 'Product not found or access denied');
+  }
+
+  product.status = status;
+  if (reason) {
+    product.statusChangeReason = reason;
+  }
+  product.statusChangedAt = new Date();
+
+  await product.save();
+
+  res.json(new ApiResponse(200, 'Product status updated successfully', {
+    product: {
+      id: product._id,
+      title: product.title,
+      status: product.status,
+      statusChangedAt: product.statusChangedAt
+    }
+  }));
+}));
+
+// Bulk update product status
+router.patch('/seller/:sellerId/bulk-status', [
+  body('productIds').isArray().withMessage('Product IDs must be an array'),
+  body('productIds.*').isMongoId().withMessage('Invalid product ID'),
+  body('status').isIn(['active', 'inactive', 'draft', 'archived']).withMessage('Valid status is required'),
+  body('reason').optional().isString().withMessage('Reason must be a string')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { sellerId } = req.params;
+  const { productIds, status, reason } = req.body;
+
+  const result = await Product.updateMany(
+    { _id: { $in: productIds }, sellerId },
+    { 
+      status,
+      statusChangeReason: reason,
+      statusChangedAt: new Date()
+    }
+  );
+
+  res.json(new ApiResponse(200, 'Bulk status update successful', {
+    updatedCount: result.modifiedCount,
+    totalRequested: productIds.length
+  }));
+}));
+
+// Bulk delete products
+router.delete('/seller/:sellerId/bulk-delete', [
+  body('productIds').isArray().withMessage('Product IDs must be an array'),
+  body('productIds.*').isMongoId().withMessage('Invalid product ID')
+], catchAsync(async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new ApiError(400, 'Validation failed', errors.array());
+  }
+
+  const { sellerId } = req.params;
+  const { productIds } = req.body;
+
+  // Get products to delete images from Cloudinary
+  const products = await Product.find({ _id: { $in: productIds }, sellerId });
+  
+  // Delete images from Cloudinary
+  for (const product of products) {
+    if (product.images && product.images.length > 0) {
+      for (const imageUrl of product.images) {
+        try {
+          const publicId = imageUrl.split('/').pop().split('.')[0];
+          await CloudinaryService.deleteImage(publicId);
+        } catch (error) {
+          console.error('Error deleting image:', error);
+        }
+      }
+    }
+  }
+
+  // Delete products
+  const result = await Product.deleteMany({ _id: { $in: productIds }, sellerId });
+
+  // Update seller's product count
+  const seller = await Seller.findById(sellerId);
+  if (seller) {
+    const currentCount = await Product.countDocuments({ sellerId });
+    await seller.updateProductCount(currentCount);
+  }
+
+  res.json(new ApiResponse(200, 'Bulk delete successful', {
+    deletedCount: result.deletedCount,
+    totalRequested: productIds.length
+  }));
+}));
+
+// Get product analytics for seller
+router.get('/seller/:sellerId/analytics', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  const { period = '30d' } = req.query;
+
+  const now = new Date();
+  let startDate;
+  
+  switch (period) {
+    case '7d':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+
+  const analytics = await Product.aggregate([
+    { $match: { sellerId: require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: null,
+        totalProducts: { $sum: 1 },
+        activeProducts: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+        inactiveProducts: { $sum: { $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0] } },
+        draftProducts: { $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] } },
+        totalStock: { $sum: '$stock' },
+        lowStockProducts: { $sum: { $cond: [{ $lte: ['$stock', 10] }, 1, 0] } },
+        outOfStockProducts: { $sum: { $cond: [{ $eq: ['$stock', 0] }, 1, 0] } },
+        averagePrice: { $avg: '$price' },
+        totalValue: { $sum: { $multiply: ['$price', '$stock'] } }
+      }
+    }
+  ]);
+
+  // Get category distribution
+  const categoryDistribution = await Product.aggregate([
+    { $match: { sellerId: require('mongoose').Types.ObjectId(sellerId) } },
+    {
+      $group: {
+        _id: '$category',
+        count: { $sum: 1 },
+        totalStock: { $sum: '$stock' },
+        averagePrice: { $avg: '$price' }
+      }
+    },
+    { $sort: { count: -1 } }
+  ]);
+
+  // Get recent products
+  const recentProducts = await Product.find({ sellerId })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .select('title status stock price createdAt');
+
+  res.json(new ApiResponse(200, 'Product analytics retrieved successfully', {
+    analytics: analytics[0] || {},
+    categoryDistribution,
+    recentProducts,
+    period,
+    startDate,
+    endDate: now
+  }));
+}));
+
+// Export seller products to CSV
+router.get('/seller/:sellerId/export', catchAsync(async (req, res) => {
+  const { sellerId } = req.params;
+  const { format = 'csv' } = req.query;
+
+  const products = await Product.find({ sellerId })
+    .select('title description price stock category status sku brand createdAt')
+    .sort({ createdAt: -1 });
+
+  if (format === 'csv') {
+    const csvData = products.map(product => ({
+      Title: product.title,
+      Description: product.description,
+      Price: product.price,
+      Stock: product.stock,
+      Category: product.category,
+      Status: product.status,
+      SKU: product.sku,
+      Brand: product.brand,
+      'Created At': product.createdAt.toISOString().split('T')[0]
+    }));
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=seller-products-${Date.now()}.csv`);
+    
+    // Convert to CSV
+    const csv = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(value => `"${value}"`).join(','))
+    ].join('\n');
+
+    res.send(csv);
+  } else {
+    res.json(new ApiResponse(200, 'Products exported successfully', { products }));
+  }
+}));
+
+// ========================================
 // PRODUCT CRUD OPERATIONS
 // ========================================
 

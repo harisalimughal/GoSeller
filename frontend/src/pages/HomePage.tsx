@@ -1,6 +1,7 @@
+"use client"
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import {
   FiSearch, FiShoppingCart, FiHeart, FiMenu, FiX, FiStar,
   FiChevronRight
@@ -311,7 +312,7 @@ const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="bg-white rounded-lg p-1">
                 <img 
                   src="/images/GoSellrLogo.png" 
@@ -339,7 +340,7 @@ const HomePage: React.FC = () => {
             {/* Navigation */}
             <nav className="hidden md:flex items-center space-x-6">
               {/* Cart Icon - Always visible */}
-              <Link to="/cart" className="relative text-white hover:text-gray-300 transition-colors">
+              <Link href="/cart" className="relative text-white hover:text-gray-300 transition-colors">
                     <FiShoppingCart className="w-6 h-6" />
                     {getCartItemCount() > 0 && (
                       <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
@@ -350,7 +351,7 @@ const HomePage: React.FC = () => {
               
               {isAuthenticated ? (
                 <>
-                  <Link to="/dashboard" className="text-white hover:text-gray-300 transition-colors">
+                  <Link href="/dashboard" className="text-white hover:text-gray-300 transition-colors">
                     Dashboard
                   </Link>
                   <div className="flex items-center space-x-2">
@@ -401,13 +402,13 @@ const HomePage: React.FC = () => {
             >
               <div className="px-4 py-6 space-y-4">
                 {/* Cart - Always visible */}
-                <Link to="/cart" className="block text-white hover:text-gray-300">
+                <Link href="/cart" className="block text-white hover:text-gray-300">
                   Cart ({getCartItemCount()})
                 </Link>
                 
                 {isAuthenticated ? (
                   <>
-                    <Link to="/dashboard" className="block text-white hover:text-gray-300">
+                    <Link href="/dashboard" className="block text-white hover:text-gray-300">
                       Dashboard
                     </Link>
                   </>
@@ -442,7 +443,7 @@ const HomePage: React.FC = () => {
               {gosellerCategories.slice(0, 4).map((category) => (
                 <Link
                   key={category.id}
-                  to={`/category/${category.slug}`}
+                  href={`/category/${category.slug}`}
                   className="px-3 py-2 rounded-lg whitespace-nowrap transition-colors text-white font-bold hover:text-orange-300 hover:bg-gray-700"
                 >
                   <span className="text-sm">{category.name}</span>
@@ -473,7 +474,7 @@ const HomePage: React.FC = () => {
                         {gosellerCategories.slice(4).map((category) => (
                       <Link
                             key={category.id}
-                            to={`/category/${category.slug}`}
+                            href={`/category/${category.slug}`}
                             className="block px-4 py-2 text-white font-bold hover:text-orange-300 hover:bg-gray-700 transition-colors"
                             onClick={() => setShowCategoriesDropdown(false)}
                           >
@@ -489,7 +490,7 @@ const HomePage: React.FC = () => {
             
             {/* Sell Button */}
             <Link
-              to="/seller-dashboard"
+              href="/seller-dashboard"
               className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-bold text-sm"
             >
               Sell
@@ -521,7 +522,7 @@ const HomePage: React.FC = () => {
                       <div className="text-center text-white">
                         <h1 className="text-4xl font-bold mb-4">{image.title}</h1>
                         <p className="text-xl mb-6">{image.subtitle}</p>
-                        <Link to="/products" className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors inline-block">
+                        <Link href="/products" className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors inline-block">
                           Shop Now
                         </Link>
                       </div>
@@ -650,7 +651,7 @@ const HomePage: React.FC = () => {
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Today's Deals</h2>
-            <Link to="/deals" className="text-orange-600 hover:text-orange-700 font-medium">
+            <Link href="/deals" className="text-orange-600 hover:text-orange-700 font-medium">
               See all deals
                 </Link>
           </div>
@@ -719,7 +720,7 @@ const HomePage: React.FC = () => {
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Featured for you</h2>
-            <Link to="/featured" className="text-orange-600 hover:text-orange-700 font-medium">
+            <Link href="/featured" className="text-orange-700 font-medium">
               View all
             </Link>
           </div>
@@ -859,7 +860,7 @@ const HomePage: React.FC = () => {
                   <p className="text-gray-600">Top products in {category.name.toLowerCase()}</p>
           </div>
                 <Link
-                  to={`/category/${category.slug}`}
+                  href={`/category/${category.slug}`}
                   className="flex items-center space-x-2 text-orange-600 hover:text-orange-700 font-medium"
                 >
                   <span>View All</span>

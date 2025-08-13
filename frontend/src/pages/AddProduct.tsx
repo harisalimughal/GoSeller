@@ -1,5 +1,6 @@
+"use client"
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   FiPackage,
@@ -68,8 +69,7 @@ interface ProductSpecification {
 }
 
 const AddProduct: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -96,14 +96,12 @@ const AddProduct: React.FC = () => {
     }
   };
 
-  // Get sellerId from location state or localStorage
-  const sellerId = location.state?.sellerId || getSellerIdFromToken();
+  // Get sellerId from localStorage token
+  const sellerId = getSellerIdFromToken();
   
   // Debug log to help troubleshoot
-  console.log('AddProduct - sellerId from location:', location.state?.sellerId);
   console.log('AddProduct - sellerId from token:', getSellerIdFromToken());
   console.log('AddProduct - final sellerId:', sellerId);
-  console.log('AddProduct - location.state:', location.state);
 
   // Function to fetch seller profile
   const fetchSellerProfile = async (sellerId: string) => {
@@ -132,12 +130,12 @@ const AddProduct: React.FC = () => {
   useEffect(() => {
     if (!sellerId) {
       console.log('No sellerId found, redirecting to login');
-      navigate('/seller-login');
+      router.push('/seller-login');
     } else {
       // Fetch seller profile when sellerId is available
       fetchSellerProfile(sellerId);
     }
-  }, [sellerId, navigate]);
+  }, [sellerId, router]);
 
   const [productData, setProductData] = useState<ProductData>({
     name: '',
@@ -288,7 +286,7 @@ const AddProduct: React.FC = () => {
   const handleSubmit = async () => {
     if (!sellerId) {
       alert('Authentication required. Please sign in to your seller account first.');
-      navigate('/seller-login');
+      router.push('/seller-login');
       return;
     }
 
@@ -329,7 +327,7 @@ const AddProduct: React.FC = () => {
   };
 
   const handleSuccessOK = () => {
-    navigate('/store-dashboard', { state: { sellerId } });
+    router.push('/store-dashboard');
   };
 
   const steps = [
@@ -439,7 +437,7 @@ const AddProduct: React.FC = () => {
               <span className="text-xl font-bold text-gray-900">Add Product</span>
             </div>
             <button
-              onClick={() => window.location.href = 'http://localhost:4000'}
+              onClick={() => router.push('/store-dashboard')}
               className="text-gray-600 hover:text-gray-900"
             >
               Back to Dashboard

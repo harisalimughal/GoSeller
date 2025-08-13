@@ -1,8 +1,11 @@
+"use client"
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { FiEye, FiEyeOff, FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
 import { sellerAuthAPI } from '../services/api';
+import { safeLocalStorage } from '@/utils/localStorage';
 
 interface LoginForm {
   email: string;
@@ -11,7 +14,7 @@ interface LoginForm {
 
 const SellerLogin: React.FC = () => {
   console.log('🔐 SellerLogin: Component rendering');
-  const navigate = useNavigate();
+  const router = useRouter();
   const [formData, setFormData] = useState<LoginForm>({
     email: '',
     password: ''
@@ -23,7 +26,7 @@ const SellerLogin: React.FC = () => {
   // Check for existing session on component mount
   React.useEffect(() => {
     const checkExistingSession = () => {
-      const token = localStorage.getItem('sellerToken');
+      const token = safeLocalStorage.getItem('sellerToken');
       if (token) {
         console.log('🔐 SellerLogin: Found existing session, redirecting to dashboard');
         // Check if token is valid
@@ -33,21 +36,21 @@ const SellerLogin: React.FC = () => {
           
           if (payload.exp && payload.exp < currentTime) {
             console.log('🔐 SellerLogin: Token expired, clearing and staying on login page');
-            localStorage.removeItem('sellerToken');
+            safeLocalStorage.removeItem('sellerToken');
             return;
           }
           
           console.log('🔐 SellerLogin: Valid token found, redirecting to dashboard');
-          navigate('/store-dashboard');
+          router.push('/seller/store-dashboard');
         } catch (error) {
           console.log('🔐 SellerLogin: Invalid token, clearing and staying on login page');
-          localStorage.removeItem('sellerToken');
+          safeLocalStorage.removeItem('sellerToken');
         }
       }
     };
 
     checkExistingSession();
-  }, [navigate]);
+  }, [router]);
 
   const handleInputChange = (field: keyof LoginForm, value: string) => {
     setFormData(prev => ({
@@ -73,16 +76,14 @@ const SellerLogin: React.FC = () => {
       console.log('🔐 SellerLogin: Login successful, response:', response);
       
       // Store token
-      localStorage.setItem('sellerToken', response.token);
+      safeLocalStorage.setItem('sellerToken', response.token);
       
       // Navigate to store dashboard
       console.log('🔐 SellerLogin: Navigating to store dashboard...');
-      navigate('/store-dashboard', {
-        state: {
-          sellerId: response.seller.id,
-          sqlLevel: response.seller.sqlLevel
-        }
-      });
+      // Store additional data in localStorage since Next.js doesn't support state in router.push
+      safeLocalStorage.setItem('sellerId', response.seller.id);
+      safeLocalStorage.setItem('sqlLevel', response.seller.sqlLevel);
+      router.push('/seller/store-dashboard');
     } catch (error: any) {
       console.error('🔐 SellerLogin: Login failed:', error);
       console.log('🔐 SellerLogin: Error response structure:', {
@@ -119,7 +120,7 @@ const SellerLogin: React.FC = () => {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-sm">G</span>
               </div>
@@ -127,9 +128,9 @@ const SellerLogin: React.FC = () => {
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
-              <Link to="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-              <Link to="/seller-registration" className="text-gray-600 hover:text-gray-900">Register</Link>
-              <Link to="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
+                              <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+                <Link href="/seller-registration" className="text-gray-600 hover:text-gray-900">Register</Link>
+                <Link href="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
             </nav>
           </div>
         </div>
@@ -253,7 +254,7 @@ const SellerLogin: React.FC = () => {
               <p className="text-sm text-gray-600">
                 Don't have an account?{' '}
                 <Link
-                  to="/seller-registration"
+                  href="/seller-registration"
                   className="font-medium text-orange-600 hover:text-orange-500 transition-colors"
                 >
                   Register here
@@ -261,7 +262,7 @@ const SellerLogin: React.FC = () => {
               </p>
               <p className="text-sm text-gray-600">
                 <Link
-                  to="/forgot-password"
+                  href="/forgot-password"
                   className="font-medium text-orange-600 hover:text-orange-500 transition-colors"
                 >
                   Forgot your password?
@@ -274,11 +275,11 @@ const SellerLogin: React.FC = () => {
           <div className="text-center">
             <p className="text-xs text-gray-500">
               By signing in, you agree to our{' '}
-              <Link to="/terms" className="text-orange-600 hover:text-orange-500">
+              <Link href="/terms" className="text-orange-600 hover:text-orange-500">
                 Terms of Service
               </Link>{' '}
               and{' '}
-              <Link to="/privacy" className="text-orange-600 hover:text-orange-500">
+              <Link href="/privacy" className="text-orange-600 hover:text-orange-500">
                 Privacy Policy
               </Link>
             </p>

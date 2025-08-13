@@ -1,5 +1,7 @@
+"use client"
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   FiShield,
@@ -51,7 +53,7 @@ interface DocumentSubmission {
 }
 
 const SQLVerification: React.FC = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [activeStep, setActiveStep] = useState('pss');
   const [currentLevel] = useState<'Free' | 'Basic' | 'Normal' | 'High' | 'VIP'>('Free');
   const [targetLevel, setTargetLevel] = useState<'Basic' | 'Normal' | 'High' | 'VIP'>('Basic');
@@ -112,7 +114,7 @@ const SQLVerification: React.FC = () => {
         setError('Please login with a seller account to access SQL verification.');
         // Redirect to seller login after a delay
         setTimeout(() => {
-          navigate('/seller-login');
+          router.push('/seller-login');
         }, 2000);
         return;
       }
@@ -126,14 +128,14 @@ const SQLVerification: React.FC = () => {
           localStorage.removeItem('sellerToken');
           setError('Session expired. Please login again.');
           setTimeout(() => {
-            navigate('/seller-login');
+            router.push('/seller-login');
           }, 2000);
         }
       } catch (error) {
         localStorage.removeItem('sellerToken');
         setError('Invalid session. Please login again.');
         setTimeout(() => {
-          navigate('/seller-login');
+          router.push('/seller-login');
         }, 2000);
       }
     };
@@ -145,7 +147,7 @@ const SQLVerification: React.FC = () => {
     const interval = setInterval(fetchVerificationStatus, 30000);
     
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, [router]);
 
   const getVerificationSteps = (): VerificationStep[] => {
     const getStepStatus = (stepId: string): 'pending' | 'in-progress' | 'completed' | 'failed' => {
@@ -577,7 +579,7 @@ const SQLVerification: React.FC = () => {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-sm">G</span>
               </div>
@@ -585,9 +587,9 @@ const SQLVerification: React.FC = () => {
             </Link>
             
             <nav className="hidden md:flex items-center space-x-8">
-              <Link to="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-              <Link to="/store-dashboard" className="text-gray-600 hover:text-gray-900">Store Dashboard</Link>
-              <Link to="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
+              <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+              <Link href="/store-dashboard" className="text-gray-600 hover:text-gray-900">Store Dashboard</Link>
+              <Link href="/help" className="text-gray-600 hover:text-gray-900">Help</Link>
             </nav>
           </div>
         </div>

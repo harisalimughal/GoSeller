@@ -14,115 +14,115 @@ const router = express.Router();
 // SELLER REGISTRATION & PROFILE
 // ========================================
 
-// Register new seller
-router.post('/register', [
-  body('businessName').trim().notEmpty().withMessage('Business name is required'),
-  body('businessType').isIn(['individual', 'company', 'partnership']).withMessage('Valid business type is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').isMobilePhone().withMessage('Valid phone number is required'),
-  body('address').isObject().withMessage('Address is required'),
-  body('documents').isArray().withMessage('Documents are required'),
-  body('bankDetails').isObject().withMessage('Bank details are required')
-], catchAsync(async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    // Format validation errors for better user experience
-    const formattedErrors = errors.array().map(error => ({
-      field: error.path,
-      message: error.msg,
-      value: error.value
-    }));
+// Register new seller - MOVED TO sellerRegistration.js to avoid conflicts
+// router.post('/register', [
+//   body('businessName').trim().notEmpty().withMessage('Business name is required'),
+//   body('businessType').isIn(['individual', 'company', 'partnership']).withMessage('Valid business type is required'),
+//   body('email').isEmail().withMessage('Valid email is required'),
+//   body('phone').isMobilePhone().withMessage('Valid phone number is required'),
+//   body('address').isObject().withMessage('Address is required'),
+//   body('documents').isArray().withMessage('Documents are required'),
+//   body('bankDetails').isObject().withMessage('Bank details are required')
+// ], catchAsync(async (req, res) => {
+//   const errors = validationResult(req);
+//   if (!errors.isEmpty()) {
+//     // Format validation errors for better user experience
+//     const formattedErrors = errors.array().map(error => ({
+//       field: error.path,
+//       message: error.msg,
+//       value: error.value
+//     }));
     
-    throw new ApiError(400, 'Please check the following fields:', formattedErrors);
-  }
+//     throw new ApiError(400, 'Please check the following fields:', formattedErrors);
+//   }
 
-  const {
-    businessName,
-    businessType,
-    email,
-    phone,
-    address,
-    documents,
-    bankDetails,
-    description,
-    categories,
-    socialMedia
-  } = req.body;
+//   const {
+//     businessName,
+//     businessType,
+//     email,
+//     phone,
+//     address,
+//     documents,
+//     bankDetails,
+//     description,
+//     categories,
+//     socialMedia
+//   } = req.body;
 
-  // Check if seller already exists with more specific error messages
-  const existingSellerByEmail = await Seller.findOne({ email });
-  const existingSellerByPhone = await Seller.findOne({ phone });
+//   // Check if seller already exists with more specific error messages
+//   const existingSellerByEmail = await Seller.findOne({ email });
+//   const existingSellerByPhone = await Seller.findOne({ phone });
 
-  if (existingSellerByEmail && existingSellerByPhone) {
-    throw new ApiError(409, 'A seller account already exists with both this email and phone number. Please use different credentials or contact support for assistance.');
-  } else if (existingSellerByEmail) {
-    throw new ApiError(409, 'A seller account already exists with this email address. Please use a different email or try logging in if you already have an account.');
-  } else if (existingSellerByPhone) {
-    throw new ApiError(409, 'A seller account already exists with this phone number. Please use a different phone number or try logging in if you already have an account.');
-  }
+//   if (existingSellerByEmail && existingSellerByPhone) {
+//     throw new ApiError(409, 'A seller account already exists with both this email and phone number. Please use different credentials or contact support for assistance.');
+//   } else if (existingSellerByEmail) {
+//     throw new ApiError(409, 'A seller account already exists with this email address. Please use a different email or try logging in if you already have an account.');
+//   } else if (existingSellerByPhone) {
+//     throw new ApiError(409, 'A seller account already exists with this phone number. Please use a different phone number or try logging in if you already have an account.');
+//   }
 
-  // Create seller
-  const seller = new Seller({
-    userId: req.user.userId,
-    name: businessName, // Required field
-    email,
-    password: 'temp_password_' + Date.now(), // Required field - will be updated later
-    contact: phone, // Required field
-    location: `${address.city || ''}, ${address.state || ''}, ${address.country || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, ''),
-    sellerType: 'store', // Required field
-    shopName: businessName, // Required field
-    businessName,
-    businessType,
-    address,
-    documents,
-    bankDetails,
-    description,
-    categories,
-    socialMedia,
-    status: 'pending',
-    verificationStatus: 'pending'
-  });
+//   // Create seller
+//   const seller = new Seller({
+//     userId: req.user.userId,
+//     name: businessName, // Required field
+//     email,
+//     password: 'temp_password_' + Date.now(), // Required field - will be updated later
+//     contact: phone, // Required field
+//     location: `${address.city || ''}, ${address.state || ''}, ${address.country || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, ''),
+//     sellerType: 'store', // Required field
+//     shopName: businessName, // Required field
+//     businessName,
+//     businessType,
+//     address,
+//     documents,
+//     bankDetails,
+//     description,
+//     categories,
+//     socialMedia,
+//     status: 'pending',
+//     verificationStatus: 'pending'
+//   });
 
-  try {
-    await seller.save();
-  } catch (saveError) {
-    console.error('Seller save error:', saveError);
+//   try {
+//     await seller.save();
+//   } catch (saveError) {
+//     console.error('Seller save error:', saveError);
     
-    // Handle specific database errors
-    if (saveError.code === 11000) {
-      // Duplicate key error - this shouldn't happen since we checked above, but handle it anyway
-      const field = Object.keys(saveError.keyValue)[0];
-      throw new ApiError(409, `A seller account already exists with this ${field}. Please use different credentials.`);
-    } else if (saveError.name === 'ValidationError') {
-      const validationErrors = Object.values(saveError.errors).map(err => err.message).join(', ');
-      throw new ApiError(400, `Validation failed: ${validationErrors}`);
-    } else {
-      throw new ApiError(500, 'Failed to create seller account. Please try again or contact support.');
-    }
-  }
+//     // Handle specific database errors
+//     if (saveError.code === 11000) {
+//       // Duplicate key error - this shouldn't happen since we checked above, but handle it anyway
+//       const field = Object.keys(saveError.keyValue)[0];
+//       throw new ApiError(409, `A seller account already exists with this ${field}. Please use different credentials.`);
+//     } else if (saveError.name === 'ValidationError') {
+//       const validationErrors = Object.values(saveError.errors).map(err => err.message).join(', ');
+//       throw new ApiError(400, `Validation failed: ${validationErrors}`);
+//     } else {
+//       throw new ApiError(500, 'Failed to create seller account. Please try again or contact support.');
+//     }
+//   }
 
-  // Update user role to seller
-  try {
-    await User.findByIdAndUpdate(req.user.userId, {
-      role: 'seller',
-      userType: 'seller'
-    });
-  } catch (userUpdateError) {
-    console.error('User role update error:', userUpdateError);
-    // Don't fail the entire registration if user role update fails
-    // The seller account was created successfully
-  }
+//   // Update user role to seller
+//   try {
+//     await User.findByIdAndUpdate(req.user.userId, {
+//       role: 'seller',
+//       userType: 'seller'
+//     });
+//   } catch (userUpdateError) {
+//     console.error('User role update error:', userUpdateError);
+//     // Don't fail the entire registration if user role update fails
+//     // The seller account was created successfully
+//   }
 
-  res.status(201).json(new ApiResponse(201, 'Seller registration successful', {
-    seller: {
-      id: seller._id,
-      businessName: seller.businessName,
-      status: seller.status,
-      verificationStatus: seller.verificationStatus,
-      sqlLevel: seller.sqlLevel || 'Free'
-    }
-  }));
-}));
+//   res.status(201).json(new ApiResponse(201, 'Seller registration successful', {
+//     seller: {
+//       id: seller._id,
+//       businessName: seller.businessName,
+//       status: seller.status,
+//       verificationStatus: seller.verificationStatus,
+//       sqlLevel: seller.sqlLevel || 'Free'
+//     }
+//   }));
+// }));
 
 // Get seller profile
 router.get('/profile', catchAsync(async (req, res) => {

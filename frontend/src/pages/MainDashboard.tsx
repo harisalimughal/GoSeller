@@ -1,5 +1,8 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiShoppingCart, FiHeart, FiStar, FiChevronRight, FiFilter, FiX } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,13 +14,13 @@ const MainDashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const [filters, setFilters] = useState({
-    category: searchParams.get('category') || '',
-    minPrice: searchParams.get('minPrice') || '',
-    maxPrice: searchParams.get('maxPrice') || '',
-    sortBy: searchParams.get('sortBy') || 'createdAt',
-    sortOrder: searchParams.get('sortOrder') || 'desc'
+    category: searchParams?.get('category') || '',
+    minPrice: searchParams?.get('minPrice') || '',
+    maxPrice: searchParams?.get('maxPrice') || '',
+    sortBy: searchParams?.get('sortBy') || 'createdAt',
+    sortOrder: searchParams?.get('sortOrder') || 'desc'
   });
   const [showFilters, setShowFilters] = useState(false);
   const [pagination, setPagination] = useState({
@@ -29,7 +32,7 @@ const MainDashboard: React.FC = () => {
 
   const { user, isAuthenticated } = useAuth();
   const { addToCart, getCartItemCount } = useCart();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const categories = CATEGORIES;
 
@@ -112,15 +115,6 @@ const MainDashboard: React.FC = () => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
     
-    // Update URL params
-    const newSearchParams = new URLSearchParams(searchParams);
-    if (value) {
-      newSearchParams.set(key, value);
-    } else {
-      newSearchParams.delete(key);
-    }
-    setSearchParams(newSearchParams);
-    
     // Reset to first page when filters change
     setPagination(prev => ({ ...prev, page: 1 }));
   };
@@ -137,9 +131,7 @@ const MainDashboard: React.FC = () => {
   const handleProductClick = (product: Product) => {
     console.log('MainDashboard - Product clicked:', product);
     console.log('MainDashboard - Product ID:', product.id);
-    navigate(`/product/${product.id}`, { 
-      state: { product, sellerId: product.sellerId?.id } 
-    });
+    router.push(`/product/${product.id}`);
   };
 
   const handlePageChange = (page: number) => {
@@ -154,7 +146,6 @@ const MainDashboard: React.FC = () => {
       sortBy: 'createdAt',
       sortOrder: 'desc'
     });
-    setSearchParams({});
   };
 
   if (loading) {
@@ -175,7 +166,7 @@ const MainDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-orange-500 rounded flex items-center justify-center">
                 <span className="text-white font-bold text-sm">G</span>
               </div>
@@ -196,7 +187,7 @@ const MainDashboard: React.FC = () => {
 
             {/* Navigation */}
             <nav className="flex items-center space-x-6">
-              <Link to="/cart" className="relative text-gray-600 hover:text-gray-900 transition-colors">
+              <Link href="/cart" className="flex items-center space-x-2">
                 <FiShoppingCart className="w-6 h-6" />
                 {getCartItemCount() > 0 && (
                   <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
@@ -215,12 +206,12 @@ const MainDashboard: React.FC = () => {
                   <span className="text-gray-900">{user?.firstName}</span>
                 </div>
               ) : (
-                <Link
-                  to="/login"
-                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
-                >
-                  Sign In
-                </Link>
+                                 <Link
+                   href="/login"
+                   className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                 >
+                   Sign In
+                 </Link>
               )}
             </nav>
           </div>

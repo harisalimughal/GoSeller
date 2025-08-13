@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+"use client"
+import Link from 'next/link'
 import {
   ShoppingCart,
   Users,
@@ -31,13 +32,13 @@ const Home: React.FC = () => {
             </nav>
             <div className="flex items-center space-x-4">
               <Link
-                to="/login"
+                href="/login"
                 className="text-gray-600 hover:text-blue-600 transition-colors"
               >
                 Login
               </Link>
               <Link
-                to="/register"
+                href="/register"
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Get Started
@@ -61,7 +62,7 @@ const Home: React.FC = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/register"
+                href="/register"
                 className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
               >
                 Start Selling Today
@@ -259,7 +260,7 @@ const Home: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/register"
+              href="/register"
               className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors"
             >
               Start Free Trial

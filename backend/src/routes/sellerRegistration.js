@@ -31,6 +31,22 @@ const upload = multer({
 // SELLER REGISTRATION
 // ========================================
 
+// Health check endpoint for debugging
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Seller Registration service is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    cloudinary: {
+      configured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
+      apiKey: process.env.CLOUDINARY_API_KEY ? 'SET' : 'NOT SET',
+      apiSecret: process.env.CLOUDINARY_API_SECRET ? 'SET' : 'NOT SET'
+    }
+  });
+});
+
 // Register new seller with file uploads
 router.post('/register', 
   upload.fields([
@@ -157,6 +173,18 @@ router.post('/register',
     let storeBannerUrl = null;
     let businessDocumentsUrls = [];
 
+    // Check if Cloudinary credentials are configured
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.warn('⚠️ Cloudinary credentials not configured. File uploads will be skipped.');
+      console.warn('📝 Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file');
+      
+      // For development, you can continue without file uploads
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚀 Development mode: Continuing without file uploads');
+      } else {
+        throw new ApiError(500, 'File upload service not configured. Please contact administrator.');
+      }
+    } else {
     try {
       // Upload store logo
       if (req.files.storeLogo) {
@@ -197,6 +225,7 @@ router.post('/register',
         throw new ApiError(400, 'File size too large. Please upload smaller images (max 5MB each).');
       } else {
         throw new ApiError(500, 'File upload failed. Please try again or contact support if the problem persists.');
+        }
       }
     }
 
