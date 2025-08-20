@@ -127,8 +127,7 @@ const router = express.Router();
 // Get seller profile
 router.get('/profile', catchAsync(async (req, res) => {
   const seller = await Seller.findOne({ userId: req.user.userId })
-    .populate('userId', 'firstName lastName email phone')
-    .populate('categories', 'name');
+    .populate('userId', 'firstName lastName email phone');
 
   if (!seller) {
     throw new ApiError(404, 'Seller profile not found');
@@ -145,7 +144,7 @@ router.put('/profile', [
   body('description').optional().trim(),
   body('address').optional().isObject(),
   body('socialMedia').optional().isObject(),
-  body('categories').optional().isArray()
+  body('serviceCategories').optional().isArray()
 ], catchAsync(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -158,7 +157,7 @@ router.put('/profile', [
   }
 
   // Update fields
-  const updateFields = ['businessName', 'description', 'address', 'socialMedia', 'categories'];
+  const updateFields = ['businessName', 'description', 'address', 'socialMedia', 'serviceCategories'];
   updateFields.forEach(field => {
     if (req.body[field] !== undefined) {
       seller[field] = req.body[field];

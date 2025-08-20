@@ -78,16 +78,11 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:4000',
-    'http://localhost:4001', // Admin panel
-    'http://localhost:5173', // Vite default dev server
-    'http://localhost:3000'  // Alternative frontend port
-  ],
-  credentials: true,
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 
 // Rate limiting
 const limiter = rateLimit({

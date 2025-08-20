@@ -370,7 +370,7 @@ const SellerRegistration: React.FC = () => {
 
   const handleGoToDashboard = () => {
     if (successData) {
-      router.push('/store-dashboard');
+      router.push('/seller/store-dashboard');
     }
   };
 

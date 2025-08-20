@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { FiEye, FiEyeOff, FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
 import { sellerAuthAPI } from '../services/api';
-import { safeLocalStorage } from '@/utils/localStorage';
+
 
 interface LoginForm {
   email: string;
@@ -26,7 +26,7 @@ const SellerLogin: React.FC = () => {
   // Check for existing session on component mount
   React.useEffect(() => {
     const checkExistingSession = () => {
-      const token = safeLocalStorage.getItem('sellerToken');
+      const token = localStorage.getItem('sellerToken');
       if (token) {
         console.log('🔐 SellerLogin: Found existing session, redirecting to dashboard');
         // Check if token is valid
@@ -36,7 +36,7 @@ const SellerLogin: React.FC = () => {
           
           if (payload.exp && payload.exp < currentTime) {
             console.log('🔐 SellerLogin: Token expired, clearing and staying on login page');
-            safeLocalStorage.removeItem('sellerToken');
+            localStorage.removeItem('sellerToken');
             return;
           }
           
@@ -44,7 +44,7 @@ const SellerLogin: React.FC = () => {
           router.push('/seller/store-dashboard');
         } catch (error) {
           console.log('🔐 SellerLogin: Invalid token, clearing and staying on login page');
-          safeLocalStorage.removeItem('sellerToken');
+          localStorage.removeItem('sellerToken');
         }
       }
     };
@@ -76,13 +76,13 @@ const SellerLogin: React.FC = () => {
       console.log('🔐 SellerLogin: Login successful, response:', response);
       
       // Store token
-      safeLocalStorage.setItem('sellerToken', response.token);
+      localStorage.setItem('sellerToken', response.token);
       
       // Navigate to store dashboard
       console.log('🔐 SellerLogin: Navigating to store dashboard...');
       // Store additional data in localStorage since Next.js doesn't support state in router.push
-      safeLocalStorage.setItem('sellerId', response.seller.id);
-      safeLocalStorage.setItem('sqlLevel', response.seller.sqlLevel);
+      localStorage.setItem('sellerId', response.seller.id);
+      localStorage.setItem('sqlLevel', response.seller.sqlLevel);
       router.push('/seller/store-dashboard');
     } catch (error: any) {
       console.error('🔐 SellerLogin: Login failed:', error);

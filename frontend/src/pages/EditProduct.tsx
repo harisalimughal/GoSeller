@@ -1,5 +1,6 @@
+'use client';
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useRouter, useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { FiArrowLeft, FiUpload, FiX, FiCheck, FiInfo } from 'react-icons/fi';
 import { productsAPI } from '../services/api';
@@ -107,9 +108,20 @@ if (typeof window !== 'undefined') {
 }
 
 const EditProduct: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { productId, sellerId: locationSellerId, product } = location.state || {};
+  const router = useRouter();
+  const params = useParams();
+  
+  // Debug: Log current URL and pathname
+  useEffect(() => {
+    console.log('EditProduct - Current URL:', window.location.href);
+    console.log('EditProduct - Current pathname:', window.location.pathname);
+    console.log('EditProduct - useParams result:', params);
+  }, []);
+  // Get product data from localStorage since Next.js doesn't support state in routing
+  const [productData, setProductData] = useState<any>(null);
+  const [productId, setProductId] = useState<string>('');
+  const [sellerId, setSellerId] = useState<string>('');
+  const [isReady, setIsReady] = useState(false);
 
   // Function to get sellerId from localStorage token
   const getSellerIdFromToken = (): string | null => {
@@ -117,12 +129,68 @@ const EditProduct: React.FC = () => {
     return sellerId;
   };
 
-  // Get sellerId from location state or localStorage
-  const sellerId = locationSellerId || getSellerIdFromToken();
+  // Get sellerId from localStorage token and set it in state
+  useEffect(() => {
+    const currentSellerId = getSellerIdFromToken();
+    if (currentSellerId) {
+      setSellerId(currentSellerId);
+    }
+  }, []);
+
+  // Set productId from URL params
+  useEffect(() => {
+    console.log('EditProduct - URL params:', params);
+    console.log('EditProduct - params type:', typeof params);
+    console.log('EditProduct - params keys:', params ? Object.keys(params) : 'No params');
+    
+    // Add a small delay to ensure params are loaded
+    const timer = setTimeout(() => {
+      if (params?.productId) {
+        setProductId(params.productId as string);
+        console.log('EditProduct - Product ID set from params:', params.productId);
+      } else if (params?.id) {
+        setProductId(params.id as string);
+        console.log('EditProduct - Product ID set from params.id:', params.id);
+      } else {
+        console.log('EditProduct - No productId in params, trying to extract from URL');
+        // Fallback: try to extract product ID from URL path
+        const pathSegments = window.location.pathname.split('/');
+        const productIdIndex = pathSegments.findIndex(segment => segment === 'edit-product') + 1;
+        if (productIdIndex < pathSegments.length && pathSegments[productIdIndex]) {
+          const extractedProductId = pathSegments[productIdIndex];
+          console.log('EditProduct - Product ID extracted from URL:', extractedProductId);
+          setProductId(extractedProductId);
+        }
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [params]);
+
+  // Redirect if component is not ready after 8 seconds
+  useEffect(() => {
+    if (!isReady) {
+      const redirectTimer = setTimeout(() => {
+        console.error('Component not ready after timeout, redirecting to dashboard');
+        alert('Unable to load product information. Please try again from the dashboard.');
+        router.push('/seller/store-dashboard');
+      }, 8000);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [isReady, router]);
+
+  // Update formData when sellerId changes
+  useEffect(() => {
+    if (sellerId) {
+      setFormData(prev => ({
+        ...prev,
+        sellerId: sellerId
+      }));
+    }
+  }, [sellerId]);
 
   // Debug logging
-  console.log('EditProduct - location.state:', location.state);
-  console.log('EditProduct - locationSellerId:', locationSellerId);
   console.log('EditProduct - sellerId from token:', getSellerIdFromToken());
   console.log('EditProduct - final sellerId:', sellerId);
   console.log('EditProduct - productId:', productId);
@@ -135,7 +203,7 @@ const EditProduct: React.FC = () => {
     stock: 0,
     category: '',
     subcategory: '',
-    sellerId: sellerId || '',
+    sellerId: '', // Initialize empty, will be set by useEffect
     brand: '',
     sku: '',
     weight: 0,
@@ -163,9 +231,7 @@ const EditProduct: React.FC = () => {
   useEffect(() => {
     // Check for required parameters
     if (!productId) {
-      console.error('Product ID is missing');
-      alert('Product ID is missing. Please go back to the dashboard and try again.');
-      navigate('/store-dashboard');
+      console.log('Product ID not yet available, waiting...');
       return;
     }
 
@@ -179,9 +245,12 @@ const EditProduct: React.FC = () => {
       console.log('EditProduct - localStorage sellerToken:', localStorage.getItem('sellerToken'));
       
       alert('Authentication required. Please sign in to your seller account first.');
-      navigate('/seller-login');
+      router.push('/seller-login');
       return;
     }
+
+    console.log('Both productId and sellerId available, loading product data...');
+    setIsReady(true);
 
     const loadProductData = async () => {
       try {
@@ -228,17 +297,17 @@ const EditProduct: React.FC = () => {
         // Check if it's an authentication error
         if (error.response?.status === 401) {
           alert('Your session has expired. Please sign in again.');
-          navigate('/seller-login');
+          router.push('/seller-login');
         } else {
           alert('Failed to load product data. Please try again.');
-          navigate('/store-dashboard');
+          router.push('/seller/store-dashboard');
         }
       }
     };
 
     loadProductData();
     loadCategories();
-  }, [productId, sellerId, navigate]);
+  }, [productId, sellerId, router]);
 
   const loadCategories = async () => {
     try {
@@ -340,7 +409,7 @@ const EditProduct: React.FC = () => {
     
     if (!sellerId) {
       alert('Authentication required. Please sign in to your seller account first.');
-      navigate('/seller-login');
+      router.push('/seller-login');
       return;
     }
 
@@ -369,7 +438,7 @@ const EditProduct: React.FC = () => {
   };
 
   const handleSuccessOK = () => {
-    navigate('/store-dashboard', { state: { sellerId } });
+    router.push('/seller/store-dashboard');
   };
 
   if (isSuccess) {
@@ -414,6 +483,16 @@ const EditProduct: React.FC = () => {
           Auth Status: {JSON.stringify(checkSellerAuth())}
           <br />
           Token: {localStorage.getItem('sellerToken') ? 'Present' : 'Missing'}
+        </div>
+      )}
+
+      {/* Loading state while product ID is being determined */}
+      {!isReady && (
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-4">
+          <div className="flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+            Loading product information...
+          </div>
         </div>
       )}
 
@@ -744,7 +823,7 @@ const EditProduct: React.FC = () => {
             <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                onClick={() => navigate('/store-dashboard', { state: { sellerId } })}
+                onClick={() => router.push('/seller/store-dashboard')}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel

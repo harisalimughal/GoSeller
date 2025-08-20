@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { body, validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Seller = require('../models/Seller');
 const CloudinaryService = require('../services/cloudinaryService');
@@ -66,7 +67,7 @@ router.get('/seller/:sellerId/manage', catchAsync(async (req, res) => {
     .sort(sort)
     .limit(limit * 1)
     .skip((page - 1) * limit)
-    .populate('categoryId', 'name');
+            .populate('category', 'name');
 
   const total = await Product.countDocuments(query);
 
@@ -86,7 +87,7 @@ router.get('/seller/:sellerId/stats', catchAsync(async (req, res) => {
   const { sellerId } = req.params;
 
   const stats = await Product.aggregate([
-    { $match: { sellerId: new require('mongoose').Types.ObjectId(sellerId) } },
+    { $match: { sellerId: new mongoose.Types.ObjectId(sellerId) } },
     {
       $group: {
         _id: null,
@@ -105,7 +106,7 @@ router.get('/seller/:sellerId/stats', catchAsync(async (req, res) => {
 
   // Get category distribution
   const categoryDistribution = await Product.aggregate([
-    { $match: { sellerId: new require('mongoose').Types.ObjectId(sellerId) } },
+    { $match: { sellerId: new mongoose.Types.ObjectId(sellerId) } },
     {
       $group: {
         _id: '$category',
@@ -119,7 +120,7 @@ router.get('/seller/:sellerId/stats', catchAsync(async (req, res) => {
 
   // Get price range
   const priceRange = await Product.aggregate([
-    { $match: { sellerId: new require('mongoose').Types.ObjectId(sellerId) } },
+    { $match: { sellerId: new mongoose.Types.ObjectId(sellerId) } },
     {
       $group: {
         _id: null,
@@ -271,7 +272,7 @@ router.get('/seller/:sellerId/analytics', catchAsync(async (req, res) => {
   }
 
   const analytics = await Product.aggregate([
-    { $match: { sellerId: require('mongoose').Types.ObjectId(sellerId) } },
+    { $match: { sellerId: new mongoose.Types.ObjectId(sellerId) } },
     {
       $group: {
         _id: null,
@@ -290,7 +291,7 @@ router.get('/seller/:sellerId/analytics', catchAsync(async (req, res) => {
 
   // Get category distribution
   const categoryDistribution = await Product.aggregate([
-    { $match: { sellerId: require('mongoose').Types.ObjectId(sellerId) } },
+    { $match: { sellerId: new mongoose.Types.ObjectId(sellerId) } },
     {
       $group: {
         _id: '$category',

@@ -16,7 +16,14 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('authToken');
+      // Check for authToken first (for regular users)
+      let token = localStorage.getItem('authToken');
+      
+      // If no authToken, check for sellerToken (for sellers)
+      if (!token) {
+        token = localStorage.getItem('sellerToken');
+      }
+      
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -35,8 +42,14 @@ api.interceptors.response.use(
     // Don't redirect for seller login attempts - let the component handle the error
     if (error.response?.status === 401 && !error.config?.url?.includes('/seller/login')) {
       if (typeof window !== 'undefined') {
+        // Remove both token types on 401 errors
         localStorage.removeItem('authToken');
-        window.location.href = '/login';
+        localStorage.removeItem('sellerToken');
+        
+        // Only redirect to login if it's not a seller endpoint
+        if (!error.config?.url?.includes('/seller/')) {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

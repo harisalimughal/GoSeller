@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { safeLocalStorage } from '@/utils/localStorage';
+
 import { authAPI } from '../services/api';
 
 // User interface
@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if user is authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const token = safeLocalStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken');
       if (token) {
         try {
           dispatch({ type: 'AUTH_START' });
@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             payload: { user: response.user, token },
           });
         } catch (error) {
-          safeLocalStorage.removeItem('authToken');
+          localStorage.removeItem('authToken');
           dispatch({ type: 'AUTH_FAILURE', payload: 'Authentication failed' });
         }
       } else {
@@ -147,7 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       dispatch({ type: 'AUTH_START' });
       const response = await authAPI.login({ email, password });
-      safeLocalStorage.setItem('authToken', response.token);
+              localStorage.setItem('authToken', response.token);
       dispatch({
         type: 'AUTH_SUCCESS',
         payload: { user: response.user, token: response.token },
@@ -178,7 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       // Continue with logout even if API call fails
     } finally {
-      safeLocalStorage.removeItem('authToken');
+              localStorage.removeItem('authToken');
       dispatch({ type: 'AUTH_LOGOUT' });
     }
   };

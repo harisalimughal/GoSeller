@@ -86,7 +86,7 @@ function App() {
                 <AddProduct />
               </SellerProtectedRoute>
             } />
-            <Route path="/edit-product" element={
+            <Route path="/edit-product/:productId" element={
               <SellerProtectedRoute>
                 <EditProduct />
               </SellerProtectedRoute>

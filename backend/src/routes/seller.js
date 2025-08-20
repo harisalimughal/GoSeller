@@ -463,8 +463,7 @@ router.get('/profile', sellerAuth, catchAsync(async (req, res) => {
   console.log('Profile request received');
   console.log('Authenticated seller ID:', req.seller._id);
 
-  const seller = await Seller.findById(req.seller._id)
-    .populate('categories', 'name');
+  const seller = await Seller.findById(req.seller._id);
 
   if (!seller) {
     throw new ApiError(404, 'Seller profile not found');
@@ -505,7 +504,7 @@ router.put('/profile', sellerAuth, [
   body('description').optional().trim(),
   body('address').optional().isObject(),
   body('socialMedia').optional().isObject(),
-  body('categories').optional().isArray()
+  body('serviceCategories').optional().isArray()
 ], catchAsync(async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -518,7 +517,7 @@ router.put('/profile', sellerAuth, [
   }
 
   // Update fields
-  const updateFields = ['businessName', 'description', 'address', 'socialMedia', 'categories'];
+  const updateFields = ['businessName', 'description', 'address', 'socialMedia', 'serviceCategories'];
   updateFields.forEach(field => {
     if (req.body[field] !== undefined) {
       seller[field] = req.body[field];

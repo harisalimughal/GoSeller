@@ -28,7 +28,6 @@ import {
   FiLogOut
 } from 'react-icons/fi';
 import { productsAPI, sellerAuthAPI, sellerRegistrationAPI } from '../services/api';
-import { safeLocalStorage } from '@/utils/localStorage';
 
 interface Product {
   _id?: string;
@@ -101,7 +100,7 @@ const StoreDashboard: React.FC = () => {
   // Function to decode JWT token and extract sellerId
   const getSellerIdFromToken = (): string | null => {
     try {
-      const token = safeLocalStorage.getItem('sellerToken');
+      const token = localStorage.getItem('sellerToken');
       if (!token) return null;
       
       const payload = JSON.parse(atob(token.split('.')[1]));
@@ -115,7 +114,7 @@ const StoreDashboard: React.FC = () => {
   // Load seller profile
   const loadSellerProfile = async () => {
     try {
-      const token = safeLocalStorage.getItem('sellerToken');
+      const token = localStorage.getItem('sellerToken');
       if (!token) return;
 
       const response = await sellerAuthAPI.getProfile();
@@ -146,7 +145,7 @@ const StoreDashboard: React.FC = () => {
 
   // Initialize component
   useEffect(() => {
-    const token = safeLocalStorage.getItem('sellerToken');
+    const token = localStorage.getItem('sellerToken');
     if (!token) {
       router.push('/seller-login');
       return;
@@ -166,9 +165,9 @@ const StoreDashboard: React.FC = () => {
 
   // Handle sign out
   const handleSignOut = () => {
-    safeLocalStorage.removeItem('sellerToken');
-    safeLocalStorage.removeItem('sellerId');
-    safeLocalStorage.removeItem('sqlLevel');
+    localStorage.removeItem('sellerToken');
+    localStorage.removeItem('sellerId');
+    localStorage.removeItem('sqlLevel');
     router.push('/seller-login');
   };
 
@@ -191,10 +190,8 @@ const StoreDashboard: React.FC = () => {
       return;
     }
     
-    // Store product data in localStorage since Next.js doesn't support state in router.push
-    safeLocalStorage.setItem('editProductId', productId);
-    safeLocalStorage.setItem('editProductData', JSON.stringify(product));
-    router.push('/seller/edit-product');
+    // Navigate to edit product page with product ID
+    router.push(`/edit-product/${productId}`);
   };
 
   const handleDeleteProduct = (product: Product) => {

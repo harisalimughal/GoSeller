@@ -1,5 +1,7 @@
+"use client"
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   FiHeart, FiStar, FiGrid, FiList, FiShoppingCart
@@ -9,8 +11,9 @@ import { productsAPI, Product } from '../services/api';
 import { CATEGORY_SLUG_MAPPING, CATEGORY_DESCRIPTIONS } from '../config/categories';
 
 const CategoryPage: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+  const params = useParams();
+const slug = params?.slug as string;
+const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,9 +93,7 @@ const CategoryPage: React.FC = () => {
   const handleProductClick = (product: Product) => {
     console.log('CategoryPage - Product clicked:', product);
     console.log('CategoryPage - Product ID:', product.id);
-    navigate(`/product/${product.id}`, { 
-      state: { product, sellerId: product.sellerId?.id } 
-    });
+            router.push(`/product/${product.id}`);
   };
 
   if (loading) {

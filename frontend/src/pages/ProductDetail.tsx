@@ -1,5 +1,7 @@
+"use client";
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiArrowLeft, FiShoppingCart, FiHeart, FiStar, FiTruck, 
@@ -10,9 +12,9 @@ import { useCart } from '../contexts/CartContext';
 import { productsAPI, Product } from '../services/api';
 
 const ProductDetail: React.FC = () => {
-  const { productId } = useParams<{ productId: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const params = useParams();
+const productId = params?.productId as string;
+const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { addToCart, getCartItemCount } = useCart();
 
@@ -82,12 +84,7 @@ const ProductDetail: React.FC = () => {
 
   const handleBuyNow = () => {
     // Navigate to checkout with this product
-    navigate('/checkout', { 
-      state: { 
-        items: [{ product, quantity }],
-        fromProduct: true 
-      } 
-    });
+    router.push('/checkout');
   };
 
   if (loading) {
@@ -111,7 +108,7 @@ const ProductDetail: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">Product not found</h3>
           <p className="text-gray-600 mb-6">{error || 'The product you are looking for does not exist.'}</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => router.push('/')}
             className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors"
           >
             Go Back Home
@@ -129,7 +126,7 @@ const ProductDetail: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => router.back()}
                 className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <FiArrowLeft className="w-5 h-5 mr-2" />
